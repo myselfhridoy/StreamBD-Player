@@ -57,9 +57,9 @@ jobs:
             const buildProps = app.expo.plugins.find(p => Array.isArray(p) && p[0] === 'expo-build-properties');
             if (buildProps) {
               if (arch === 'all') {
-                delete buildProps[1].android.reactNativeArchitectures;
+                delete buildProps[1].android.buildArchs;
               } else {
-                buildProps[1].android.reactNativeArchitectures = [arch];
+                buildProps[1].android.buildArchs = [arch];
               }
             }
             fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
