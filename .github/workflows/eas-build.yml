@@ -4,6 +4,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Build Profile (preview for final app, development for expo go alternative)'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - development
 
 jobs:
   build:
@@ -29,7 +38,7 @@ jobs:
         run: npm ci
 
       - name: 🚀 Build locally on GitHub Actions (Bypasses Expo Limits)
-        run: eas build --platform android --profile preview --local --non-interactive --output app.apk
+        run: eas build --platform android --profile ${{ github.event.inputs.profile || 'preview' }} --local --non-interactive --output app.apk
 
       - name: 💾 Upload APK Artifact
         uses: actions/upload-artifact@v4
