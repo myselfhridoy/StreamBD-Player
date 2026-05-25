@@ -101,22 +101,40 @@ export default function PlayerScreen() {
 
   // TV D-Pad Support (removed useTVEventHandler as it's deprecated in RN 0.76+)
 
+  // Cache volume and brightness to prevent async race conditions during fast swipes
+  const currentVolume = useRef(0.5);
+  const currentBrightness = useRef(0.5);
+
+  useEffect(() => {
+    let volSub: any = null;
+    (async () => {
+      try {
+        const v = await VolumeManager.getVolume();
+        currentVolume.current = typeof v === 'number' ? v : v.volume;
+        const b = await Brightness.getBrightnessAsync();
+        if (b >= 0) currentBrightness.current = b;
+      } catch (e) {}
+    })();
+    volSub = VolumeManager.addVolumeListener((result) => {
+      currentVolume.current = result.volume;
+    });
+    return () => {
+      if (volSub) volSub.remove();
+    };
+  }, []);
+
   // Gestures (Volume & Brightness)
   const startVal = useRef({ vol: 0, bright: 0 });
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dy) > 20,
-      onPanResponderGrant: async () => {
+      onPanResponderGrant: () => {
         if (settings.volumeGesture) {
-          const v = await VolumeManager.getVolume();
-          startVal.current.vol = typeof v === 'number' ? v : v.volume;
+          startVal.current.vol = currentVolume.current;
         }
         if (settings.brightnessGesture) {
-          const { status } = await Brightness.requestPermissionsAsync();
-          if (status === 'granted') {
-            startVal.current.bright = await Brightness.getBrightnessAsync();
-          }
+          startVal.current.bright = currentBrightness.current;
         }
       },
       onPanResponderMove: (evt, gestureState) => {
@@ -129,7 +147,8 @@ export default function PlayerScreen() {
           // Left side: Brightness
           let newBright = startVal.current.bright + delta;
           newBright = Math.max(0, Math.min(newBright, 1));
-          Brightness.setSystemBrightnessAsync(newBright);
+          Brightness.setBrightnessAsync(newBright);
+          currentBrightness.current = newBright;
           showOverlayFeedback(`Brightness: ${Math.round(newBright * 100)}%`);
         } else if (moveX >= width / 2 && settings.volumeGesture) {
           // Right side: Volume
