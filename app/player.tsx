@@ -364,29 +364,39 @@ export default function PlayerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  videoContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#000', width: '100%', height: '100%' },
+  videoContainer: { 
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: '100%', height: '100%',
+    justifyContent: 'center', alignItems: 'center',
+    zIndex: 1
+  },
   video: { width: '100%', height: '100%' },
-  loadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
-  controlsOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between', zIndex: 20 },
-  topGradient: { height: 100, paddingTop: 20, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between' },
+  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  controlsOverlay: { 
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
+    width: '100%', height: '100%',
+    justifyContent: 'space-between', zIndex: 20, elevation: 10 
+  },
+  topGradient: { height: 100, paddingTop: 20, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
   topRightControls: { flexDirection: 'row', gap: 10 },
-  bottomGradient: { height: 120, justifyContent: 'flex-end', paddingBottom: 20, paddingHorizontal: 30 },
+  bottomGradient: { height: 120, justifyContent: 'flex-end', paddingBottom: 20, paddingHorizontal: 30, width: '100%' },
   iconButton: { padding: 10, borderRadius: 24 },
   smallIconButton: { padding: 10 },
-  centerControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40 },
+  centerControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40, width: '100%' },
   centerBtn: { padding: 15, borderRadius: 40, backgroundColor: 'rgba(0,0,0,0.4)' },
   playBtn: { padding: 20, borderRadius: 60, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 2, borderColor: 'transparent' },
-  sliderContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  sliderContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, width: '100%' },
   slider: { flex: 1, height: 40, marginHorizontal: 15 },
   timeText: { color: '#fff', fontSize: 14, fontWeight: '600', fontVariant: ['tabular-nums'] },
   liveContainer: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginBottom: 10 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E50914', marginRight: 6 },
   liveText: { color: '#E50914', fontWeight: '800', fontSize: 14, letterSpacing: 1 },
-  bottomRightControls: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: -15 },
+  bottomRightControls: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: -15, width: '100%' },
   
   // Settings UI
-  settingsOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 30, justifyContent: 'center', alignItems: 'center' },
+  settingsOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 30, justifyContent: 'center', alignItems: 'center', elevation: 20 },
   settingsPanel: { width: '70%', height: '70%', backgroundColor: 'rgba(20,20,25,0.95)', borderRadius: 16, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   settingsSidebar: { width: 140, backgroundColor: 'rgba(0,0,0,0.3)', paddingTop: 20 },
   settingsHeader: { color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 20, marginBottom: 20 },
