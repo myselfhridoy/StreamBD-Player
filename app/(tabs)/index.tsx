@@ -1,5 +1,6 @@
+import Text from '../../components/Text';
 import React, { useState, useRef } from 'react';
-import { StyleSheet, TextInput, ScrollView, TouchableOpacity, View, Animated, Text, Modal } from 'react-native';
+import { StyleSheet, TextInput, ScrollView, TouchableOpacity, View, Animated, Modal } from 'react-native';;
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
@@ -50,8 +51,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   const handlePlay = () => {
-    if (!mediaUrl) {
-      // Show Toast
+    if (!mediaUrl || !mediaUrl.trim()) {
       setShowToast(true);
       Animated.sequence([
         Animated.timing(toastAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
@@ -60,10 +60,20 @@ export default function HomeScreen() {
       ]).start(() => setShowToast(false));
       return;
     }
-
+    
     router.push({
       pathname: '/player',
-      params: { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat }
+      params: { 
+        mediaUrl, 
+        cookie, 
+        referer, 
+        origin, 
+        drmUrl, 
+        userAgent, 
+        drmScheme, 
+        streamFormat: 'auto',
+        fromHome: 'true'
+      }
     });
   };
 

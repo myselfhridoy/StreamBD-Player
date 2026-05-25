@@ -1,19 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, ActivityIndicator, Image, Modal, TextInput, Dimensions } from 'react-native';
+import Text from '../components/Text';
+import React, { useState, useEffect, memo, useCallback } from 'react';
+import { StyleSheet, View, TouchableOpacity, FlatList, ActivityIndicator, Image, Modal, TextInput, Dimensions } from 'react-native';;
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseM3U, Channel } from '../utils/m3uParser';
+import { usePlaylist } from './context/PlaylistContext';
 import * as FileSystem from 'expo-file-system';
 
 const { width } = Dimensions.get('window');
 const numColumns = Math.floor(width / 100);
 
+const MemoizedChannelItem = memo(({ item, index, onPress }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void }) => (
+  <TouchableOpacity style={styles.channelItem} onPress={() => onPress(item, index)}>
+    <View style={styles.logoContainer}>
+      {item.logo ? (
+        <Image source={{ uri: item.logo }} style={styles.channelLogo} resizeMode="contain" />
+      ) : (
+        <MaterialIcons name="tv" size={40} color="#ccc" />
+      )}
+    </View>
+    <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
+      {item.name}
+    </Text>
+  </TouchableOpacity>
+));
+
 export default function ChannelBrowserScreen() {
   const { playlistUrl, playlistName, isLocal } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { setPlaylist } = usePlaylist();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -115,7 +133,8 @@ export default function ChannelBrowserScreen() {
     setFilteredChannels(filtered);
   }, [selectedCategory, searchQuery, allChannels]);
 
-  const handleChannelPress = (channel: Channel) => {
+  const handleChannelPress = useCallback((channel: Channel, index: number) => {
+    setPlaylist(filteredChannels, index);
     router.push({
       pathname: '/player',
       params: { 
@@ -127,28 +146,16 @@ export default function ChannelBrowserScreen() {
         userAgent: channel.userAgent || 'Default', 
         drmScheme: 'clearkey', 
         streamFormat: 'auto',
-        // Pass metadata so Player can add it to Favorites
         channelName: channel.name,
         channelLogo: channel.logo,
         channelGroup: channel.group
       }
     });
-  };
+  }, [filteredChannels, setPlaylist, router]);
 
-  const renderChannel = ({ item }: { item: Channel }) => (
-    <TouchableOpacity style={styles.channelItem} onPress={() => handleChannelPress(item)}>
-      <View style={styles.logoContainer}>
-        {item.logo ? (
-          <Image source={{ uri: item.logo }} style={styles.channelLogo} resizeMode="contain" />
-        ) : (
-          <MaterialIcons name="tv" size={40} color="#ccc" />
-        )}
-      </View>
-      <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderChannel = useCallback(({ item, index }: { item: Channel, index: number }) => (
+    <MemoizedChannelItem item={item} index={index} onPress={handleChannelPress} />
+  ), [handleChannelPress]);
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 15) }]}>
@@ -233,6 +240,10 @@ export default function ChannelBrowserScreen() {
           renderItem={renderChannel}
           contentContainerStyle={styles.gridContainer}
           columnWrapperStyle={{ justifyContent: 'flex-start' }}
+          removeClippedSubviews={true}
+          initialNumToRender={20}
+          maxToRenderPerBatch={10}
+          windowSize={5}
           ListEmptyComponent={
             <View style={styles.centerContent}>
               <Text style={styles.emptyText}>No channels found</Text>
@@ -370,7 +381,7 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     paddingHorizontal: 10,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   channelItem: {
     width: (width - 20) / numColumns,

@@ -1,12 +1,15 @@
+import Text from '../components/Text';
 
 import { Stack } from 'expo-router';
-import { useFonts } from 'expo-font';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { TextInput } from 'react-native';;
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { SettingsProvider } from './context/SettingsContext';
+import { PlaylistProvider } from './context/PlaylistContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -23,6 +26,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
+    Inter: Inter_400Regular,
+    Inter_Medium: Inter_500Medium,
+    Inter_SemiBold: Inter_600SemiBold,
+    Inter_Bold: Inter_700Bold,
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
@@ -33,6 +40,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
+      // @ts-ignore
+      if (TextInput.defaultProps == null) TextInput.defaultProps = {};
+      // @ts-ignore
+      TextInput.defaultProps.style = { fontFamily: 'Inter' };
+
       SplashScreen.hideAsync();
     }
   }, [loaded]);
@@ -49,11 +61,13 @@ function RootLayoutNav() {
 
   return (
     <SettingsProvider>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="player" options={{ headerShown: false }} />
-        <Stack.Screen name="history" options={{ headerShown: false }} />
-      </Stack>
+      <PlaylistProvider>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="player" options={{ headerShown: false }} />
+          <Stack.Screen name="history" options={{ headerShown: false }} />
+        </Stack>
+      </PlaylistProvider>
     </SettingsProvider>
   );
 }

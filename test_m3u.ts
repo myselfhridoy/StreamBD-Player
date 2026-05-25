@@ -1,60 +1,18 @@
-const parseM3U = (content: string) => {
-  const channels = [];
-  const lines = content.split('\n');
+import { parseM3U } from './utils/m3uParser';
 
-  let currentChannel: any = {};
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    if (line.startsWith('#EXTINF:')) {
-      const logoMatch = line.match(/tvg-logo="([^"]+)"/);
-      const groupMatch = line.match(/group-title="([^"]+)"/);
-      const commaIndex = line.lastIndexOf(',');
-      let name = '';
-      if (commaIndex !== -1) name = line.substring(commaIndex + 1).trim();
-      else {
-        const nameMatch = line.match(/tvg-name="([^"]+)"/);
-        name = nameMatch ? nameMatch[1] : 'Unknown Channel';
-      }
-
-      currentChannel = {
-        name: name,
-        logo: logoMatch ? logoMatch[1] : '',
-        group: groupMatch ? groupMatch[1] : 'Uncategorized',
-        userAgent: '',
-        cookie: '',
-      };
-    } else if (line.startsWith('#EXTVLCOPT:http-user-agent=')) {
-      if (currentChannel.name) {
-        currentChannel.userAgent = line.replace('#EXTVLCOPT:http-user-agent=', '').trim();
-      }
-    } else if (line.startsWith('#EXTHTTP:')) {
-      if (currentChannel.name) {
-        try {
-          const jsonStr = line.replace('#EXTHTTP:', '').trim();
-          const parsedHttp = JSON.parse(jsonStr);
-          if (parsedHttp.cookie) {
-            currentChannel.cookie = parsedHttp.cookie;
-          }
-        } catch (e) {}
-      }
-    } else if (line !== '' && !line.startsWith('#')) {
-      if (currentChannel.name) {
-        currentChannel.url = line;
-        channels.push(currentChannel);
-        currentChannel = {}; 
-      }
-    }
-  }
-  return channels;
-};
-
-const testData = `
-#EXTINF:-1 group-title="LIVE" tvg-chno="" tvg-id="" tvg-logo="https://images.toffeelive.com/images/program/19779/logo/240x240/mobile_logo_975410001725875598.png", TOFFEE Sports VIP
-#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Linux; Android 9; Redmi S2 Build/PKQ1.181203.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.7049.79 Mobile Safari/537.36
-#EXTHTTP:{"cookie":"Edge-Cache-Cookie=URLPrefix=aHR0cHM6Ly9ibGRjbXByb2QtY2RuLnRvZmZlZWxpdmUuY29t:Expires=1779742608:KeyName=prod_linear:Signature=yJ7AyfyL-ZyT1C5AoSZ-7JxfEySOEwI_uk9UjdaC5imswnmiFVkRF8h112jnBusC594E1thR0F-LNGXGg3aVDw"}
-https://bldcmprod-cdn.toffeelive.com/cdn/live/sports_highlights/playlist.m3u8
+const testM3U = `
+#EXTM3U
+#EXTINF:-1 tvg-name="Welcome to PlayZ TV" group-title="Welcome to PlayZ TV | New App" tvg-logo="https://blogger.googleusercontent.com/img/b/R29vZ2xl/...",Welcome to PlayZ TV
+https://playztv.pages.dev/promo/intro-2.mp4
+#EXTVLCOPT:http-referrer=http://www.fawanews.sc/
+#EXTVLCOPT:http-origin=http://www.fawanews.sc
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+#EXTINF:-1 group-title="Ecuador Liga Pro" tvg-name="Aucas vs Manta" tvg-logo="https://pbs.twimg.com/profile_images/2018798676844453888/qC9fH20A_400x400.jpg",Aucas vs Manta
+http://193.47.62.43/hls/CACACADDD.m3u8
+#EXTVLCOPT:http-referrer=http://www.fawanews.sc/
+#EXTVLCOPT:http-origin=http://www.fawanews.sc
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
 `;
 
-console.log(JSON.stringify(parseM3U(testData), null, 2));
+const parsed = parseM3U(testM3U);
+console.log(JSON.stringify(parsed, null, 2));

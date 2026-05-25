@@ -1,5 +1,6 @@
+import Text from '../components/Text';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, Alert } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, FlatList, Alert } from 'react-native';;
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,7 +47,8 @@ export default function HistoryScreen() {
         drmUrl: item.drmUrl || '',
         userAgent: item.userAgent || 'Default', 
         drmScheme: item.drmScheme || 'clearkey',
-        streamFormat: item.streamFormat || 'auto'
+        streamFormat: item.streamFormat || 'auto',
+        fromHome: 'true'
       }
     });
   };

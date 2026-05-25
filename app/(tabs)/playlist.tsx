@@ -1,5 +1,6 @@
+import Text from '../../components/Text';
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';;
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -115,9 +116,22 @@ export default function PlaylistScreen() {
     setShowAddModal(true);
   };
 
-  const handleDelete = (id: string) => {
-    const updatedList = playlists.filter(p => p.id !== id);
-    savePlaylists(updatedList);
+  const handleDelete = (id: string, name: string) => {
+    Alert.alert(
+      "Delete Playlist",
+      `Are you sure you want to delete "${name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: () => {
+            const updatedList = playlists.filter(p => p.id !== id);
+            savePlaylists(updatedList);
+          }
+        }
+      ]
+    );
   };
 
   const openChannelBrowser = (playlist: Playlist) => {
@@ -135,7 +149,6 @@ export default function PlaylistScreen() {
     <TouchableOpacity 
       style={styles.playlistItem}
       onPress={() => openChannelBrowser(item)}
-      onLongPress={() => handleDelete(item.id)}
     >
       <View style={styles.playlistItemContent}>
         <Text style={styles.playlistItemName}>{item.name}</Text>
@@ -143,9 +156,14 @@ export default function PlaylistScreen() {
           {item.isLocal ? "Local File" : item.url}
         </Text>
       </View>
-      <TouchableOpacity style={styles.editBtn} onPress={() => handleEdit(item)}>
-        <MaterialIcons name="edit" size={22} color="#fff" />
-      </TouchableOpacity>
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={styles.iconButton} onPress={() => handleEdit(item)}>
+          <MaterialIcons name="edit" size={22} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconButton} onPress={() => handleDelete(item.id, item.name)}>
+          <MaterialIcons name="delete" size={22} color="#ff4444" />
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
@@ -268,7 +286,7 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: 15,
     paddingTop: 10,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   playlistItem: {
     flexDirection: 'row',
@@ -293,8 +311,13 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 12,
   },
-  editBtn: {
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconButton: {
     padding: 8,
+    marginLeft: 5,
   },
   dropdownOverlay: {
     flex: 1,

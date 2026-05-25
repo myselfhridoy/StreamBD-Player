@@ -11,12 +11,17 @@ export const parseM3U = (content: string): Channel[] => {
   const channels: Channel[] = [];
   const lines = content.split('\n');
 
-  let currentChannel: Partial<Channel> = {};
+  let currentChannel: Partial<Channel> | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+    if (!line) continue;
 
     if (line.startsWith('#EXTINF:')) {
+      if (currentChannel && currentChannel.url) {
+        channels.push(currentChannel as Channel);
+      }
+
       // Extract properties using regex
       const logoMatch = line.match(/tvg-logo="([^"]+)"/);
       const groupMatch = line.match(/group-title="([^"]+)"/);
@@ -36,15 +41,13 @@ export const parseM3U = (content: string): Channel[] => {
         name: name,
         logo: logoMatch ? logoMatch[1] : '',
         group: groupMatch ? groupMatch[1] : 'Uncategorized',
-        userAgent: '',
-        cookie: '',
       };
     } else if (line.startsWith('#EXTVLCOPT:http-user-agent=')) {
-      if (currentChannel.name) {
+      if (currentChannel) {
         currentChannel.userAgent = line.replace('#EXTVLCOPT:http-user-agent=', '').trim();
       }
     } else if (line.startsWith('#EXTHTTP:')) {
-      if (currentChannel.name) {
+      if (currentChannel) {
         try {
           const jsonStr = line.replace('#EXTHTTP:', '').trim();
           const parsedHttp = JSON.parse(jsonStr);
@@ -55,14 +58,17 @@ export const parseM3U = (content: string): Channel[] => {
           // ignore parsing error
         }
       }
-    } else if (line !== '' && !line.startsWith('#')) {
+    } else if (!line.startsWith('#')) {
       // This should be the URL line
-      if (currentChannel.name) {
+      if (currentChannel) {
         currentChannel.url = line;
-        channels.push(currentChannel as Channel);
-        currentChannel = {}; // Reset for next channel
       }
     }
+  }
+
+  // Push the last channel if it exists
+  if (currentChannel && currentChannel.url) {
+    channels.push(currentChannel as Channel);
   }
 
   return channels;

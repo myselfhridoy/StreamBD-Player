@@ -36,6 +36,12 @@ export default function TabLayout() {
           paddingBottom: Platform.OS === 'ios' ? 25 : 10,
           paddingTop: 8,
         },
+        tabBarLabelStyle: {
+          fontFamily: 'Inter',
+        },
+        headerTitleStyle: {
+          fontFamily: 'Inter_Bold',
+        },
       }}>
       <Tabs.Screen
         name="index"

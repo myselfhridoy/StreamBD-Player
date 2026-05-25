@@ -1,18 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, Image, Dimensions, TextInput } from 'react-native';
+import Text from '../components/Text';
+import React, { useState, useEffect, memo, useCallback } from 'react';
+import { StyleSheet, View, TouchableOpacity, FlatList, Image, Dimensions, TextInput } from 'react-native';;
 import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Channel } from '../utils/m3uParser';
-import { useCallback } from 'react';
+import { usePlaylist } from './context/PlaylistContext';
 
 const { width } = Dimensions.get('window');
 const numColumns = Math.floor(width / 100);
 
+const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void, onLongPress: (url: string) => void }) => (
+  <TouchableOpacity style={styles.channelItem} onPress={() => onPress(item, index)} onLongPress={() => onLongPress(item.url)}>
+    <View style={styles.logoContainer}>
+      {item.logo ? (
+        <Image source={{ uri: item.logo }} style={styles.channelLogo} resizeMode="contain" />
+      ) : (
+        <MaterialIcons name="tv" size={40} color="#ccc" />
+      )}
+      <TouchableOpacity 
+        style={styles.favoriteIcon} 
+        onPress={() => onLongPress(item.url)}
+      >
+        <MaterialIcons name="star" size={20} color="#FFD700" />
+      </TouchableOpacity>
+    </View>
+    <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
+      {item.name}
+    </Text>
+  </TouchableOpacity>
+));
+
 export default function FavoritesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { setPlaylist } = usePlaylist();
 
   const [favorites, setFavorites] = useState<Channel[]>([]);
   const [activeTab, setActiveTab] = useState<'LIVE EVENTS' | 'CHANNELS' | 'VOD'>('CHANNELS');
@@ -62,7 +85,8 @@ export default function FavoritesScreen() {
     return filtered;
   };
 
-  const handleChannelPress = (channel: Channel) => {
+  const handleChannelPress = useCallback((channel: Channel, index: number) => {
+    setPlaylist(getFilteredFavorites(), index);
     router.push({
       pathname: '/player',
       params: { 
@@ -79,28 +103,11 @@ export default function FavoritesScreen() {
         channelGroup: channel.group
       }
     });
-  };
+  }, [getFilteredFavorites, setPlaylist, router]);
 
-  const renderChannel = ({ item }: { item: Channel }) => (
-    <TouchableOpacity style={styles.channelItem} onPress={() => handleChannelPress(item)} onLongPress={() => removeFavorite(item.url)}>
-      <View style={styles.logoContainer}>
-        {item.logo ? (
-          <Image source={{ uri: item.logo }} style={styles.channelLogo} resizeMode="contain" />
-        ) : (
-          <MaterialIcons name="tv" size={40} color="#ccc" />
-        )}
-        <TouchableOpacity 
-          style={styles.favoriteIcon} 
-          onPress={() => removeFavorite(item.url)}
-        >
-          <MaterialIcons name="star" size={20} color="#FFD700" />
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderChannel = useCallback(({ item, index }: { item: Channel, index: number }) => (
+    <MemoizedChannelItem item={item} index={index} onPress={handleChannelPress} onLongPress={removeFavorite} />
+  ), [handleChannelPress, removeFavorite]);
 
   const displayedFavorites = getFilteredFavorites();
 
@@ -163,6 +170,10 @@ export default function FavoritesScreen() {
         renderItem={renderChannel}
         contentContainerStyle={styles.gridContainer}
         columnWrapperStyle={{ justifyContent: 'flex-start' }}
+        removeClippedSubviews={true}
+        initialNumToRender={20}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         ListEmptyComponent={
           <View style={styles.centerContent}>
             <Text style={styles.emptyText}>No favourite channel found!</Text>
@@ -245,7 +256,7 @@ const styles = StyleSheet.create({
   gridContainer: {
     paddingHorizontal: 10,
     paddingTop: 10,
-    paddingBottom: 20,
+    paddingBottom: 100,
     flexGrow: 1,
   },
   channelItem: {

@@ -1,5 +1,6 @@
+import Text from '../components/Text';
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, Platform, Pressable } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, Platform, Pressable } from 'react-native';;
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import Video, { DRMType, OnLoadData, ReactVideoSource, VideoRef, SelectedTrackType, SelectedVideoTrackType } from 'react-native-video';
 import Slider from '@react-native-community/slider';
@@ -10,13 +11,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Brightness from 'expo-brightness';
 import { VolumeManager } from 'react-native-volume-manager';
 import { useSettings } from './context/SettingsContext';
+import { usePlaylist } from './context/PlaylistContext';
 
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup } = params;
+  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup, fromHome } = params;
 
   const { settings } = useSettings();
+  const { nextChannel, prevChannel } = usePlaylist();
   const videoRef = useRef<VideoRef>(null);
   
   // Basic Playback State
@@ -64,6 +67,7 @@ export default function PlayerScreen() {
 
   useEffect(() => {
     checkFavoriteStatus();
+    saveToHistory();
     // Apply initial Landscape lock if needed
     if (settings.landscapeOnly) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
@@ -73,7 +77,41 @@ export default function PlayerScreen() {
     return () => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
     };
-  }, [settings.landscapeOnly]);
+  }, [settings.landscapeOnly, mediaUrl]);
+
+  const saveToHistory = async () => {
+    if (!mediaUrl || fromHome !== 'true') return;
+    try {
+      const data = await AsyncStorage.getItem('streamHistory');
+      let history = data ? JSON.parse(data) : [];
+      
+      const newItem = {
+        url: mediaUrl,
+        name: channelName || mediaUrl,
+        logo: channelLogo || '',
+        group: channelGroup || 'Uncategorized',
+        date: new Date().toISOString(),
+        cookie,
+        referer,
+        origin,
+        drmUrl,
+        userAgent,
+        drmScheme,
+        streamFormat
+      };
+      
+      // Remove duplicate
+      history = history.filter((item: any) => item.url !== mediaUrl);
+      // Add to front
+      history.unshift(newItem);
+      // Keep only last 100
+      if (history.length > 100) history = history.slice(0, 100);
+      
+      await AsyncStorage.setItem('streamHistory', JSON.stringify(history));
+    } catch (e) {
+      console.log('Failed to save history', e);
+    }
+  };
 
   useEffect(() => {
     if (!showSettings) {
@@ -326,8 +364,12 @@ export default function PlayerScreen() {
   if (cookie) headers['Cookie'] = cookie as string;
   if (referer) headers['Referer'] = referer as string;
   if (origin) headers['Origin'] = origin as string;
-  if (userAgent && userAgent !== 'Default') headers['User-Agent'] = userAgent as string;
-
+  
+  if (userAgent && userAgent !== 'Default') {
+    headers['User-Agent'] = userAgent as string;
+  } else {
+    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  }
   console.log("PLAYING MEDIA URL:", mediaUrl);
   console.log("WITH HEADERS:", headers);
 
@@ -369,8 +411,38 @@ export default function PlayerScreen() {
     drmConfig = { type, licenseServer: finalLicenseServer, headers: Object.keys(headers).length > 0 ? headers : undefined };
   }
 
+  const switchChannel = (channel: any) => {
+    if (!channel) return;
+    setIsBuffering(true);
+    setIsReady(false);
+    router.setParams({
+      mediaUrl: channel.url,
+      channelName: channel.name,
+      channelLogo: channel.logo || '',
+      channelGroup: channel.group || 'CHANNELS',
+      cookie: channel.cookie || '',
+      userAgent: channel.userAgent || 'Default'
+    });
+    showOverlayFeedback(`Switching to ${channel.name}`);
+  };
+
+  const handleNextChannel = () => switchChannel(nextChannel());
+  const handlePrevChannel = () => switchChannel(prevChannel());
+
   return (
-    <View style={styles.container} {...panResponder.panHandlers}>
+    <View 
+      style={styles.container} 
+      {...panResponder.panHandlers}
+      focusable={true}
+      //@ts-ignore
+      onKeyDown={(e: any) => {
+        if (e.nativeEvent.key === 'ArrowDown') {
+          handleNextChannel();
+        } else if (e.nativeEvent.key === 'ArrowUp') {
+          handlePrevChannel();
+        }
+      }}
+    >
       <Stack.Screen options={{ 
         headerShown: false, 
         navigationBarHidden: true, 

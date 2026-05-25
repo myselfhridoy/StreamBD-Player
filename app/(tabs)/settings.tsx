@@ -1,5 +1,6 @@
+import Text from '../../components/Text';
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Switch, TouchableOpacity, Modal } from 'react-native';
+import { StyleSheet, View, ScrollView, Switch, TouchableOpacity, Modal } from 'react-native';;
 import { useSettings } from '../context/SettingsContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
