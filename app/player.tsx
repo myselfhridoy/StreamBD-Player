@@ -311,8 +311,7 @@ export default function PlayerScreen() {
     <View style={styles.container} {...panResponder.panHandlers}>
       <Stack.Screen options={{ headerShown: false, navigationBarHidden: true, statusBarHidden: true }} />
       
-      <TouchableWithoutFeedback onPress={toggleControls}>
-        <View style={styles.videoContainer}>
+      <View style={styles.videoContainer}>
         <Video
           ref={videoRef}
           source={{ uri: (mediaUrl as string) || '', headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig, type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined } as ReactVideoSource}
@@ -337,7 +336,11 @@ export default function PlayerScreen() {
           skipSilence={settings.skipSilence}
           enableTunneling={settings.enableTunneling}
         />
-        </View>
+      </View>
+
+      {/* Touch interceptor for toggling controls */}
+      <TouchableWithoutFeedback onPress={toggleControls}>
+        <View style={StyleSheet.absoluteFill} />
       </TouchableWithoutFeedback>
 
       {/* Loading Indicator */}
