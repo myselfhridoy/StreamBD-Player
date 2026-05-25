@@ -22,6 +22,19 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   const handlePlay = () => {
+    if (!mediaUrl) {
+      if (Platform.OS === 'web') {
+        window.alert('Please enter a Media Stream URL');
+      } else {
+        alert('Please enter a Media Stream URL');
+      }
+      return;
+    }
+    
+    if (Platform.OS === 'web') {
+      window.alert('Note: react-native-video is optimized for native Android/iOS. Web playback may be limited.');
+    }
+
     router.push({
       pathname: '/player',
       params: { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme }
@@ -99,7 +112,7 @@ export default function HomeScreen() {
                 <Picker
                   selectedValue={userAgent}
                   onValueChange={(itemValue) => setUserAgent(itemValue)}
-                  style={{ color: textColor, width: '100%', height: '100%', border: 'none', outline: 'none' } as any}
+                  style={{ color: textColor, backgroundColor: 'transparent', width: '100%', height: '100%', border: 'none', outline: 'none' } as any}
                   dropdownIconColor={textColor}
                 >
                   <Picker.Item label="Default" value="Default" />
@@ -115,7 +128,7 @@ export default function HomeScreen() {
                 <Picker
                   selectedValue={drmScheme}
                   onValueChange={(itemValue) => setDrmScheme(itemValue)}
-                  style={{ color: textColor, width: '100%', height: '100%', border: 'none', outline: 'none' } as any}
+                  style={{ color: textColor, backgroundColor: 'transparent', width: '100%', height: '100%', border: 'none', outline: 'none' } as any}
                   dropdownIconColor={textColor}
                 >
                   <Picker.Item label="Widevine" value="widevine" />
@@ -137,10 +150,10 @@ export default function HomeScreen() {
         onPress={handlePlay}
       >
         <LinearGradient 
-          colors={['#6366f1', '#8b5cf6']} 
+          colors={['#4F46E5', '#7C3AED']} 
           start={{ x: 0, y: 0 }} 
           end={{ x: 1, y: 1 }} 
-          style={styles.fab}
+          style={[styles.fab, { borderRadius: 34 }]}
         >
           <MaterialIcons name="play-arrow" size={34} color="#fff" />
         </LinearGradient>
@@ -214,6 +227,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
+    borderRadius: 34,
   },
   fab: {
     width: 64,
