@@ -263,6 +263,26 @@ export default function PlayerScreen() {
     }
   };
 
+  const handleAudioTracks = (data: { audioTracks: any[] }) => {
+    if (data.audioTracks) setAudioTracks(data.audioTracks);
+  };
+
+  const handleTextTracks = (data: { textTracks: any[] }) => {
+    if (data.textTracks) setTextTracks(data.textTracks);
+  };
+
+  const handleVideoTracks = (data: { videoTracks: any[] }) => {
+    if (data.videoTracks) {
+      const uniqueHeights = new Set<number>();
+      const filteredVideos = data.videoTracks.filter(t => {
+        if (!t.height || uniqueHeights.has(t.height)) return false;
+        uniqueHeights.add(t.height);
+        return true;
+      }).sort((a, b) => b.height - a.height);
+      setVideoTracks(filteredVideos);
+    }
+  };
+
   const togglePiP = () => {
     if (Platform.OS === 'web') return;
     setIsPiPActive(true);
@@ -342,6 +362,9 @@ export default function PlayerScreen() {
           selectedTextTrack={selectedTextTrack === -1 ? { type: 'disabled' } : { type: 'index', value: selectedTextTrack }}
           selectedVideoTrack={selectedVideoTrack === 0 ? { type: 'auto' } : { type: 'resolution', value: selectedVideoTrack }}
           onLoad={handleLoad}
+          onAudioTracks={handleAudioTracks}
+          onTextTracks={handleTextTracks}
+          onVideoTracks={handleVideoTracks}
           onProgress={(data) => setCurrentTime(data.currentTime)}
           onBuffer={({ isBuffering }) => setIsBuffering(isBuffering)}
           onPictureInPictureStatusChanged={(isActive) => setIsPiPActive(isActive.isActive)}
