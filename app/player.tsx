@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, Platform, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import Video, { DRMType, OnLoadData, ReactVideoSource } from 'react-native-video';
+import Video, { DRMType, OnLoadData, ReactVideoSource, VideoRef, SelectedTrackType, SelectedVideoTrackType } from 'react-native-video';
 import Slider from '@react-native-community/slider';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +17,7 @@ export default function PlayerScreen() {
   const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat } = params;
 
   const { settings } = useSettings();
-  const videoRef = useRef<Video>(null);
+  const videoRef = useRef<VideoRef>(null);
   
   // Basic Playback State
   const [paused, setPaused] = useState(false);
@@ -47,7 +47,7 @@ export default function PlayerScreen() {
   
   // Overlay feedback
   const [overlayText, setOverlayText] = useState('');
-  const overlayTimer = useRef<NodeJS.Timeout | null>(null);
+  const overlayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showOverlayFeedback = (text: string) => {
     setOverlayText(text);
@@ -57,7 +57,7 @@ export default function PlayerScreen() {
 
   // Animation & Timers
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Apply initial Landscape lock if needed
@@ -221,7 +221,7 @@ export default function PlayerScreen() {
         if (!t.height || uniqueHeights.has(t.height)) return false;
         uniqueHeights.add(t.height);
         return true;
-      }).sort((a, b) => b.height - a.height);
+      }).sort((a, b) => (b.height ?? 0) - (a.height ?? 0));
       setVideoTracks(filteredVideos);
     }
   };
@@ -241,7 +241,7 @@ export default function PlayerScreen() {
         if (!t.height || uniqueHeights.has(t.height)) return false;
         uniqueHeights.add(t.height);
         return true;
-      }).sort((a, b) => b.height - a.height);
+      }).sort((a, b) => (b.height ?? 0) - (a.height ?? 0));
       setVideoTracks(filteredVideos);
     }
   };
@@ -324,10 +324,9 @@ export default function PlayerScreen() {
           paused={paused}
           rate={playbackRate}
           resizeMode={resizeMode}
-          pictureInPicture={isPiPActive}
-          selectedAudioTrack={selectedAudioTrack !== undefined ? { type: 'index', value: selectedAudioTrack } : undefined}
-          selectedTextTrack={selectedTextTrack === -1 ? { type: 'disabled' } : { type: 'index', value: selectedTextTrack }}
-          selectedVideoTrack={selectedVideoTrack === 0 ? { type: 'auto' } : { type: 'resolution', value: selectedVideoTrack }}
+          selectedAudioTrack={selectedAudioTrack !== undefined ? { type: SelectedTrackType.INDEX, value: selectedAudioTrack } : undefined}
+          selectedTextTrack={selectedTextTrack === -1 ? { type: SelectedTrackType.DISABLED } : { type: SelectedTrackType.INDEX, value: selectedTextTrack }}
+          selectedVideoTrack={selectedVideoTrack === 0 ? { type: SelectedVideoTrackType.AUTO } : { type: SelectedVideoTrackType.RESOLUTION, value: selectedVideoTrack }}
           onLoad={handleLoad}
           onAudioTracks={handleAudioTracks}
           onTextTracks={handleTextTracks}

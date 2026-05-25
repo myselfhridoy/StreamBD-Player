@@ -8,7 +8,7 @@ import { useColorScheme } from 'react-native';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof MaterialIcons>['name'];
-  color: string;
+  color: string | any;
 }) {
   return <MaterialIcons size={28} style={{ marginBottom: -3 }} {...props} />;
 }
