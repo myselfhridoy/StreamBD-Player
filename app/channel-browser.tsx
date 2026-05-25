@@ -253,7 +253,12 @@ export default function ChannelBrowserScreen() {
       )}
 
       {/* Category Modal */}
-      <Modal visible={showCategoryModal} transparent animationType="fade">
+      <Modal 
+        visible={showCategoryModal} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={[styles.categoryModal, { marginTop: Math.max(insets.top, 15) + 60 }]}>
             <View style={styles.modalHeader}>

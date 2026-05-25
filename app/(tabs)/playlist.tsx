@@ -192,7 +192,12 @@ export default function PlaylistScreen() {
       )}
 
       {/* Dropdown Menu Modal */}
-      <Modal visible={showDropdown} transparent animationType="fade">
+      <Modal 
+        visible={showDropdown} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setShowDropdown(false)}
+      >
         <TouchableOpacity style={styles.dropdownOverlay} onPress={() => setShowDropdown(false)} activeOpacity={1}>
           <View style={[styles.dropdownMenu, { top: Math.max(insets.top, 20) + 50 }]}>
             <TouchableOpacity style={styles.dropdownItem} onPress={handleAddUrl}>
@@ -206,7 +211,12 @@ export default function PlaylistScreen() {
       </Modal>
 
       {/* Add/Edit Modal */}
-      <Modal visible={showAddModal} transparent animationType="fade">
+      <Modal 
+        visible={showAddModal} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setShowAddModal(false)}
+      >
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
           style={styles.modalOverlay}
