@@ -250,7 +250,7 @@ export default function PlayerScreen() {
     if (Platform.OS === 'web') return;
     setIsPiPActive(true);
     try {
-      videoRef.current?.restoreUserInterfaceForPictureInPictureStopCompleted(true);
+      videoRef.current?.enterPictureInPicture();
     } catch (e) { }
   };
 
