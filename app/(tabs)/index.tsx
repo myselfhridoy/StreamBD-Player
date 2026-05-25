@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, ScrollView, Platform, TouchableOpacity, useColorScheme } from 'react-native';
+import { StyleSheet, TextInput, ScrollView, Platform, TouchableOpacity, useColorScheme, View as RNView } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const [mediaUrl, setMediaUrl] = useState('');
@@ -19,6 +19,7 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handlePlay = () => {
     router.push({
@@ -27,20 +28,24 @@ export default function HomeScreen() {
     });
   };
 
-  const gradientColors = isDark ? ['#1e1e2d', '#0f0f18'] as const : ['#f4f6ff', '#e2e8ff'] as const;
-  const glassColor = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)';
+  const gradientColors = isDark ? ['#111118', '#1c1c28'] as const : ['#f0f2f5', '#ffffff'] as const;
+  const cardColor = isDark ? 'rgba(35, 35, 50, 0.7)' : 'rgba(255, 255, 255, 0.9)';
   const textColor = isDark ? '#ffffff' : '#1a1a24';
   const placeholderColor = isDark ? '#6b6b80' : '#8a8aa3';
-  const inputBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const inputBg = isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.9)';
+  const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  const inputBg = isDark ? 'rgba(0,0,0,0.3)' : '#f9f9fb';
 
   return (
     <LinearGradient colors={gradientColors} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top + 20, 40) }]} 
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         
         <Text style={[styles.headerText, { color: textColor }]}>Stream Setup</Text>
         
-        <BlurView intensity={isDark ? 40 : 80} tint={isDark ? 'dark' : 'light'} style={[styles.glassCard, { backgroundColor: glassColor, borderColor: inputBorder }]}>
+        <RNView style={[styles.card, { backgroundColor: cardColor, borderColor: inputBorder }]}>
           
           <Text style={[styles.label, { color: textColor }]}>Media Stream URL</Text>
           <TextInput
@@ -87,57 +92,57 @@ export default function HomeScreen() {
             onChangeText={setDrmUrl}
           />
 
-          <View style={styles.row}>
-            <View style={[styles.flex1, { marginRight: 10, backgroundColor: 'transparent' }]}>
+          <RNView style={styles.row}>
+            <RNView style={[styles.flex1, { marginRight: 8 }]}>
               <Text style={[styles.label, { color: textColor }]}>User Agent</Text>
-              <View style={[styles.pickerContainer, { borderColor: inputBorder, backgroundColor: inputBg }]}>
+              <RNView style={[styles.pickerContainer, { borderColor: inputBorder, backgroundColor: inputBg }]}>
                 <Picker
                   selectedValue={userAgent}
                   onValueChange={(itemValue) => setUserAgent(itemValue)}
-                  style={{ color: textColor }}
+                  style={{ color: textColor, width: '100%', height: '100%', border: 'none', outline: 'none' } as any}
                   dropdownIconColor={textColor}
                 >
                   <Picker.Item label="Default" value="Default" />
                   <Picker.Item label="Chrome" value="Chrome" />
                   <Picker.Item label="Firefox" value="Firefox" />
                 </Picker>
-              </View>
-            </View>
+              </RNView>
+            </RNView>
 
-            <View style={[styles.flex1, { marginLeft: 10, backgroundColor: 'transparent' }]}>
+            <RNView style={[styles.flex1, { marginLeft: 8 }]}>
               <Text style={[styles.label, { color: textColor }]}>DRM Scheme</Text>
-              <View style={[styles.pickerContainer, { borderColor: inputBorder, backgroundColor: inputBg }]}>
+              <RNView style={[styles.pickerContainer, { borderColor: inputBorder, backgroundColor: inputBg }]}>
                 <Picker
                   selectedValue={drmScheme}
                   onValueChange={(itemValue) => setDrmScheme(itemValue)}
-                  style={{ color: textColor }}
+                  style={{ color: textColor, width: '100%', height: '100%', border: 'none', outline: 'none' } as any}
                   dropdownIconColor={textColor}
                 >
                   <Picker.Item label="Widevine" value="widevine" />
                   <Picker.Item label="PlayReady" value="playready" />
                   <Picker.Item label="ClearKey" value="clearkey" />
                 </Picker>
-              </View>
-            </View>
-          </View>
-        </BlurView>
+              </RNView>
+            </RNView>
+          </RNView>
+        </RNView>
         
-        {/* Padding for bottom FAB */}
-        <View style={{ height: 100, backgroundColor: 'transparent' }} />
+        {/* Plenty of padding to allow scrolling past the FAB and Bottom Tabs */}
+        <RNView style={{ height: 160 }} />
       </ScrollView>
 
       <TouchableOpacity 
-        style={styles.fabShadow} 
+        style={[styles.fabShadow, { bottom: Math.max(insets.bottom + 85, 90) }]} 
         activeOpacity={0.8} 
         onPress={handlePlay}
       >
         <LinearGradient 
-          colors={['#4F46E5', '#7C3AED']} 
+          colors={['#6366f1', '#8b5cf6']} 
           start={{ x: 0, y: 0 }} 
           end={{ x: 1, y: 1 }} 
           style={styles.fab}
         >
-          <MaterialIcons name="play-arrow" size={32} color="#fff" />
+          <MaterialIcons name="play-arrow" size={34} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
     </LinearGradient>
@@ -149,69 +154,71 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
+    paddingHorizontal: 20,
   },
   headerText: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
-    marginBottom: 24,
-    letterSpacing: 0.5,
+    marginBottom: 20,
+    letterSpacing: -0.5,
   },
-  glassCard: {
-    borderRadius: 28,
+  card: {
+    borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 5,
   },
   label: {
     fontSize: 12,
     fontWeight: '700',
     marginBottom: 8,
-    marginLeft: 6,
-    opacity: 0.8,
+    marginLeft: 4,
+    opacity: 0.7,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   input: {
-    height: 56,
+    height: 52,
     borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 18,
+    borderRadius: 14,
+    paddingHorizontal: 16,
     marginBottom: 20,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'transparent',
-    marginTop: 4,
+    marginTop: 2,
   },
   flex1: {
     flex: 1,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
-    height: Platform.OS === 'ios' ? undefined : 56,
+    height: 52,
     justifyContent: 'center',
   },
   fabShadow: {
     position: 'absolute',
-    bottom: 30,
-    right: 30,
+    right: 24,
     elevation: 10,
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
-    shadowRadius: 16,
+    shadowRadius: 12,
   },
   fab: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },

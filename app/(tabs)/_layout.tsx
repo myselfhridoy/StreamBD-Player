@@ -5,7 +5,6 @@ import { BlurView } from 'expo-blur';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof MaterialIcons>['name'];
@@ -21,57 +20,28 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: isDark ? '#7C3AED' : '#4F46E5',
-        tabBarInactiveTintColor: isDark ? '#6b6b80' : '#a1a1bb',
-        headerShown: useClientOnlyValue(false, true),
+        tabBarActiveTintColor: isDark ? '#A78BFA' : '#4F46E5',
+        tabBarInactiveTintColor: isDark ? '#6b6b80' : '#8a8aa3',
+        headerShown: false, // Hide header completely for a cleaner look
         tabBarStyle: { 
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
           elevation: 0,
-          borderTopWidth: 0,
-          backgroundColor: 'transparent',
-          height: Platform.OS === 'ios' ? 85 : 70,
-          paddingBottom: Platform.OS === 'ios' ? 25 : 12,
+          borderTopWidth: 1,
+          borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+          backgroundColor: isDark ? 'rgba(15, 15, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+          height: Platform.OS === 'ios' ? 85 : 65,
+          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
+          paddingTop: 8,
         },
-        tabBarBackground: () => (
-          <BlurView 
-            tint={isDark ? 'dark' : 'light'} 
-            intensity={80} 
-            style={StyleSheet.absoluteFill} 
-          />
-        ),
-        headerStyle: {
-          backgroundColor: isDark ? '#1e1e2d' : '#f4f6ff',
-          elevation: 0,
-          shadowOpacity: 0,
-          borderBottomWidth: 0,
-        },
-        headerTitleStyle: {
-          fontWeight: '700',
-        }
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          headerTitle: '',
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <MaterialIcons
-                    name="info-outline"
-                    size={25}
-                    color={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
         }}
       />
       <Tabs.Screen
