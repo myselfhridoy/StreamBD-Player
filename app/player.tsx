@@ -1,81 +1,49 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
-import { WebView } from 'react-native-webview';
+import Video, { DRMType } from 'react-native-video';
 
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
   const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme } = params;
 
-  // This HTML loads Video.js and attempts to set it up with DRM if provided.
-  // Note: DRM support in WebViews (especially Widevine) can be limited by the mobile OS.
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-      <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
-      <style>
-        body { margin: 0; background-color: black; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .video-js { width: 100vw; height: 100vh; }
-      </style>
-    </head>
-    <body>
-      <video
-        id="my-player"
-        class="video-js vjs-default-skin vjs-big-play-centered"
-        controls
-        preload="auto"
-        data-setup='{}'>
-      </video>
+  const videoRef = useRef<Video>(null);
 
-      <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-      <!-- EME (Encrypted Media Extensions) plugin for DRM -->
-      <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-eme@5.4.0/dist/videojs-contrib-eme.min.js"></script>
-      
-      <script>
-        var player = videojs('my-player');
-        
-        // Initialize EME plugin for DRM
-        player.eme();
+  // Construct headers if any are provided
+  const headers: Record<string, string> = {};
+  if (cookie) headers['Cookie'] = cookie as string;
+  if (referer) headers['Referer'] = referer as string;
+  if (origin) headers['Origin'] = origin as string;
+  if (userAgent && userAgent !== 'Default') headers['User-Agent'] = userAgent as string;
 
-        // Prepare player source
-        var srcConfig = {
-          src: "${mediaUrl}",
-          // Let video.js auto-detect type, or you could force application/x-mpegURL for HLS
-        };
+  // Configure DRM if a license URL is provided
+  let drmConfig = undefined;
+  if (drmUrl) {
+    let type = DRMType.WIDEVINE;
+    if (drmScheme === 'playready') type = DRMType.PLAYREADY;
+    else if (drmScheme === 'clearkey') type = DRMType.CLEARKEY;
+    else if (drmScheme === 'fairplay') type = DRMType.FAIRPLAY;
 
-        // If DRM is configured
-        if ("${drmUrl}" !== "") {
-          var keySystems = {};
-          
-          if ("${drmScheme}" === "widevine") {
-             keySystems['com.widevine.alpha'] = "${drmUrl}";
-          } else if ("${drmScheme}" === "playready") {
-             keySystems['com.microsoft.playready'] = "${drmUrl}";
-          } else if ("${drmScheme}" === "clearkey") {
-             keySystems['org.w3.clearkey'] = "${drmUrl}";
-          }
-          
-          srcConfig.keySystems = keySystems;
-        }
-
-        player.src(srcConfig);
-        player.play();
-      </script>
-    </body>
-    </html>
-  `;
+    drmConfig = {
+      type,
+      licenseServer: drmUrl as string,
+    };
+  }
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Player', headerShown: false }} />
-      <WebView
-        style={styles.webview}
-        source={{ html: htmlContent }}
-        allowsInlineMediaPlayback
-        mediaPlaybackRequiresUserAction={false}
-        originWhitelist={['*']}
+      <Video
+        ref={videoRef}
+        source={{
+          uri: (mediaUrl as string) || '',
+          headers: Object.keys(headers).length > 0 ? headers : undefined,
+          drm: drmConfig,
+        }}
+        controls={true}
+        resizeMode="contain"
+        style={styles.video}
+        onError={(e) => console.log('Video Error:', e)}
       />
     </View>
   );
@@ -85,9 +53,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  webview: {
-    flex: 1,
-    backgroundColor: '#000',
+  video: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
   },
 });
