@@ -1,6 +1,6 @@
-import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+
 import { Stack } from 'expo-router';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
@@ -49,13 +49,11 @@ function RootLayoutNav() {
 
   return (
     <SettingsProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="player" options={{ headerShown: false, orientation: 'all' }} />
-          <Stack.Screen name="history" options={{ headerShown: false }} />
-        </Stack>
-      </ThemeProvider>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="player" options={{ headerShown: false, orientation: 'all' }} />
+        <Stack.Screen name="history" options={{ headerShown: false }} />
+      </Stack>
     </SettingsProvider>
   );
 }

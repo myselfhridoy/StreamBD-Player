@@ -139,26 +139,6 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-
-        <View style={styles.inputWrapper}>
-          <View style={styles.floatingLabelWrapper}>
-            <Text style={styles.floatingLabel}>Stream Format (Optional)</Text>
-          </View>
-          <View style={[styles.outlinedInput, { paddingHorizontal: 0, justifyContent: 'center' }]}>
-            <Picker
-              selectedValue={streamFormat}
-              onValueChange={(val) => setStreamFormat(val)}
-              style={{ color: '#fff', width: '100%', height: 50, backgroundColor: 'transparent' } as any}
-              dropdownIconColor="#ccc"
-            >
-              <Picker.Item label="Auto (Let Player Decide)" value="auto" />
-              <Picker.Item label="HLS (.m3u8)" value="m3u8" />
-              <Picker.Item label="DASH (.mpd)" value="mpd" />
-              <Picker.Item label="SmoothStreaming" value="ism" />
-              <Picker.Item label="MP4 / TS" value="mp4" />
-            </Picker>
-          </View>
-        </View>
         
         <View style={{ height: 100 }} />
       </ScrollView>

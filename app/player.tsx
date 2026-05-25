@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, useTVEventHandler, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, useTVEventHandler, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import Video, { DRMType, OnLoadData, ReactVideoSource } from 'react-native-video';
 import Slider from '@react-native-community/slider';
@@ -139,7 +139,7 @@ export default function PlayerScreen() {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dy) > 15,
+      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dy) > 20,
       onPanResponderGrant: async () => {
         if (settings.volumeGesture) {
           const v = await VolumeManager.getVolume();
@@ -314,7 +314,8 @@ export default function PlayerScreen() {
     <View style={styles.container} {...panResponder.panHandlers}>
       <Stack.Screen options={{ headerShown: false, navigationBarHidden: true, statusBarHidden: true }} />
       
-      <TouchableOpacity activeOpacity={1} style={styles.videoContainer} onPress={toggleControls}>
+      <TouchableWithoutFeedback onPress={toggleControls}>
+        <View style={styles.videoContainer}>
         <Video
           ref={videoRef}
           source={{ uri: (mediaUrl as string) || '', headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig, type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined } as ReactVideoSource}
@@ -336,7 +337,8 @@ export default function PlayerScreen() {
           skipSilence={settings.skipSilence}
           enableTunneling={settings.enableTunneling}
         />
-      </TouchableOpacity>
+        </View>
+      </TouchableWithoutFeedback>
 
       {/* Loading Indicator */}
       {isBuffering && (
@@ -366,7 +368,7 @@ export default function PlayerScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <ScrollView style={styles.settingsContent}>
+            <ScrollView style={styles.settingsContent} showsVerticalScrollIndicator={false}>
               {activeTab === 'audio' && (
                 <>
                   {audioTracks.length === 0 && <Text style={styles.noTracksText}>No alternative audio tracks.</Text>}
