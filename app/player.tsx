@@ -42,7 +42,7 @@ export default function PlayerScreen() {
   const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch' | 'auto'>('auto');
   const [isPiPActive, setIsPiPActive] = useState(false);
   const [isLandscape, setIsLandscape] = useState(settings?.landscapeOnly || false);
-  const activeResizeMode = resizeMode === 'auto' ? 'contain' : resizeMode;
+  const activeResizeMode = resizeMode === 'auto' ? (isLandscape ? 'stretch' : 'contain') : resizeMode;
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
@@ -552,8 +552,9 @@ export default function PlayerScreen() {
           <View style={styles.bottomRightControls}>
             <TouchableOpacity style={styles.smallIconButton} onPress={() => {
                 setResizeMode(r => {
-                  const current = r === 'auto' ? 'contain' : r;
-                  return current === 'contain' ? 'cover' : current === 'cover' ? 'stretch' : 'auto';
+                  return r === 'auto' ? 'contain' : 
+                         r === 'contain' ? 'cover' : 
+                         r === 'cover' ? 'stretch' : 'auto';
                 });
                 showControlsUI();
               }}>
