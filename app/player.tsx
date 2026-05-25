@@ -14,7 +14,7 @@ import { useSettings } from './context/SettingsContext';
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme } = params;
+  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat } = params;
 
   const { settings } = useSettings();
   const videoRef = useRef<Video>(null);
@@ -125,8 +125,12 @@ export default function PlayerScreen() {
           tvPausedRef.current = false;
         }
       }, 500);
-    } else if (key === 'select' || key === 'playPause') {
+    } else if (key === 'playPause') {
       setPaused(!paused);
+    } else if (key === 'select') {
+      if (!showControls && !showSettings) {
+        showControlsUI();
+      }
     }
   });
 
@@ -217,7 +221,7 @@ export default function PlayerScreen() {
         let historyList = existing ? JSON.parse(existing) : [];
         historyList = historyList.filter((item: any) => item.url !== mediaUrl);
         historyList.unshift({ 
-          url: mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, timestamp: Date.now() 
+          url: mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, timestamp: Date.now() 
         });
         if (historyList.length > 50) historyList.pop();
         await AsyncStorage.setItem('streamHistory', JSON.stringify(historyList));
@@ -313,7 +317,7 @@ export default function PlayerScreen() {
       <TouchableOpacity activeOpacity={1} style={styles.videoContainer} onPress={toggleControls}>
         <Video
           ref={videoRef}
-          source={{ uri: (mediaUrl as string) || '', headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig } as ReactVideoSource}
+          source={{ uri: (mediaUrl as string) || '', headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig, type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined } as ReactVideoSource}
           controls={false}
           paused={paused}
           rate={playbackRate}
@@ -354,8 +358,8 @@ export default function PlayerScreen() {
           <View style={styles.settingsPanel}>
             <View style={styles.settingsSidebar}>
               <Text style={styles.settingsHeader}>Settings</Text>
-              {(['audio', 'subs', 'quality', 'speed'] as const).map(tab => (
-                <TouchableOpacity key={tab} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
+              {(['audio', 'subs', 'quality', 'speed'] as const).map((tab, idx) => (
+                <TouchableOpacity key={tab} hasTVPreferredFocus={idx === 0} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
                   <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
                     {tab === 'audio' ? 'Audio' : tab === 'subs' ? 'Subtitles' : tab === 'quality' ? 'Quality' : 'Speed'}
                   </Text>
@@ -443,7 +447,7 @@ export default function PlayerScreen() {
               <Text style={styles.seekBtnText}>-{settings.seekDuration}s</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
+          <TouchableOpacity hasTVPreferredFocus={true} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
             <MaterialIcons name={paused ? "play-arrow" : "pause"} size={64} color="#fff" />
           </TouchableOpacity>
           {!isLive && (
@@ -516,9 +520,9 @@ const styles = StyleSheet.create({
   liveText: { color: '#E50914', fontWeight: '800', fontSize: 14, letterSpacing: 1 },
   bottomRightControls: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: -15, width: '100%' },
   settingsOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 30, justifyContent: 'center', alignItems: 'center', elevation: 20 },
-  settingsPanel: { width: '70%', height: '70%', backgroundColor: 'rgba(20,20,25,0.95)', borderRadius: 16, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  settingsSidebar: { width: 140, backgroundColor: 'rgba(0,0,0,0.3)', paddingTop: 20 },
-  settingsHeader: { color: '#fff', fontSize: 20, fontWeight: 'bold', paddingHorizontal: 20, marginBottom: 20 },
+  settingsPanel: { width: '85%', maxWidth: 600, height: '75%', maxHeight: 400, backgroundColor: 'rgba(20,20,25,0.95)', borderRadius: 16, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  settingsSidebar: { width: '35%', maxWidth: 160, backgroundColor: 'rgba(0,0,0,0.3)', paddingTop: 20 },
+  settingsHeader: { color: '#fff', fontSize: 18, fontWeight: 'bold', paddingHorizontal: 15, marginBottom: 20 },
   tabBtn: { paddingVertical: 15, paddingHorizontal: 20 },
   activeTabBtn: { backgroundColor: 'rgba(229,9,20,0.15)', borderLeftWidth: 4, borderLeftColor: '#E50914' },
   tabText: { color: 'rgba(255,255,255,0.6)', fontSize: 16, fontWeight: '600' },

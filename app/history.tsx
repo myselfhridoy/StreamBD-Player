@@ -45,7 +45,8 @@ export default function HistoryScreen() {
         origin: item.origin || '',
         drmUrl: item.drmUrl || '',
         userAgent: item.userAgent || 'Default', 
-        drmScheme: item.drmScheme || 'clearkey' 
+        drmScheme: item.drmScheme || 'clearkey',
+        streamFormat: item.streamFormat || 'auto'
       }
     });
   };

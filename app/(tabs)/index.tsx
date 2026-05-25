@@ -36,6 +36,7 @@ export default function HomeScreen() {
   const [drmUrl, setDrmUrl] = useState('');
   const [userAgent, setUserAgent] = useState('Default');
   const [drmScheme, setDrmScheme] = useState('clearkey');
+  const [streamFormat, setStreamFormat] = useState('auto');
   
   const [showToast, setShowToast] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
@@ -62,7 +63,7 @@ export default function HomeScreen() {
 
     router.push({
       pathname: '/player',
-      params: { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme }
+      params: { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat }
     });
   };
 
@@ -136,6 +137,26 @@ export default function HomeScreen() {
                 </Picker>
               </View>
             </View>
+          </View>
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <View style={styles.floatingLabelWrapper}>
+            <Text style={styles.floatingLabel}>Stream Format (Optional)</Text>
+          </View>
+          <View style={[styles.outlinedInput, { paddingHorizontal: 0, justifyContent: 'center' }]}>
+            <Picker
+              selectedValue={streamFormat}
+              onValueChange={(val) => setStreamFormat(val)}
+              style={{ color: '#fff', width: '100%', height: 50, backgroundColor: 'transparent' } as any}
+              dropdownIconColor="#ccc"
+            >
+              <Picker.Item label="Auto (Let Player Decide)" value="auto" />
+              <Picker.Item label="HLS (.m3u8)" value="m3u8" />
+              <Picker.Item label="DASH (.mpd)" value="mpd" />
+              <Picker.Item label="SmoothStreaming" value="ism" />
+              <Picker.Item label="MP4 / TS" value="mp4" />
+            </Picker>
           </View>
         </View>
         
