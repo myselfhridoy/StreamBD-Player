@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, useTVEventHandler, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import Video, { DRMType, OnLoadData, ReactVideoSource } from 'react-native-video';
 import Slider from '@react-native-community/slider';
@@ -99,44 +99,7 @@ export default function PlayerScreen() {
     };
   }, [currentTime, settings.resumePlay, duration, isLive, mediaUrl]);
 
-  // TV D-Pad Support
-  const tvSeekTimer = useRef<NodeJS.Timeout | null>(null);
-  const tvPausedRef = useRef(false);
-
-  useTVEventHandler((evt) => {
-    if (!evt || !evt.eventType) return;
-    const key = evt.eventType;
-    if (key === 'right' || key === 'left') {
-      const delta = key === 'right' ? settings.seekDuration : -settings.seekDuration;
-      
-      setCurrentTime((prev) => {
-        const nextTime = Math.max(0, Math.min(prev + delta, duration || 99999));
-        videoRef.current?.seek(nextTime);
-        showOverlayFeedback(`${key === 'right' ? '+' : '-'}${settings.seekDuration}s`);
-        return nextTime;
-      });
-
-      if (!paused && !tvPausedRef.current) {
-        setPaused(true);
-        tvPausedRef.current = true;
-      }
-      showControlsUI();
-
-      if (tvSeekTimer.current) clearTimeout(tvSeekTimer.current);
-      tvSeekTimer.current = setTimeout(() => {
-        if (tvPausedRef.current) {
-          setPaused(false);
-          tvPausedRef.current = false;
-        }
-      }, 500);
-    } else if (key === 'playPause') {
-      setPaused(!paused);
-    } else if (key === 'select') {
-      if (!showControls && !showSettings) {
-        showControlsUI();
-      }
-    }
-  });
+  // TV D-Pad Support (removed useTVEventHandler as it's deprecated in RN 0.76+)
 
   // Gestures (Volume & Brightness)
   const startVal = useRef({ vol: 0, bright: 0 });
