@@ -51,7 +51,7 @@ function RootLayoutNav() {
     <SettingsProvider>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="player" options={{ headerShown: false, orientation: 'all' }} />
+        <Stack.Screen name="player" options={{ headerShown: false }} />
         <Stack.Screen name="history" options={{ headerShown: false }} />
       </Stack>
     </SettingsProvider>

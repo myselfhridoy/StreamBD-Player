@@ -309,7 +309,12 @@ export default function PlayerScreen() {
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      <Stack.Screen options={{ headerShown: false, navigationBarHidden: true, statusBarHidden: true }} />
+      <Stack.Screen options={{ 
+        headerShown: false, 
+        navigationBarHidden: true, 
+        statusBarHidden: true,
+        orientation: isLandscape ? 'landscape' : 'portrait'
+      }} />
       
       <View style={styles.videoContainer}>
         <Video
