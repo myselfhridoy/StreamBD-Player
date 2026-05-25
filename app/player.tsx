@@ -135,9 +135,16 @@ export default function PlayerScreen() {
   };
 
   const togglePiP = () => {
+    if (Platform.OS === 'web') {
+      window.alert('Picture-in-Picture is a native feature and is not supported in the web preview.');
+      return;
+    }
     setIsPiPActive(true);
-    // Note: True native Android PiP requires manifest changes. This triggers the component prop.
-    videoRef.current?.restoreUserInterfaceForPictureInPictureStopCompleted(true);
+    try {
+      videoRef.current?.restoreUserInterfaceForPictureInPictureStopCompleted(true);
+    } catch (e) {
+      console.log('PiP Error:', e);
+    }
   };
 
   const formatTime = (seconds: number) => {
