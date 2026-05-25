@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, Platform, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import Video, { DRMType, OnLoadData, ReactVideoSource } from 'react-native-video';
 import Slider from '@react-native-community/slider';
@@ -344,9 +344,7 @@ export default function PlayerScreen() {
       </View>
 
       {/* Touch interceptor for toggling controls */}
-      <TouchableWithoutFeedback onPress={toggleControls}>
-        <View style={StyleSheet.absoluteFill} />
-      </TouchableWithoutFeedback>
+      <Pressable style={[StyleSheet.absoluteFill, { zIndex: 5 }]} onPress={toggleControls} />
 
       {/* Loading Indicator */}
       {isBuffering && (
