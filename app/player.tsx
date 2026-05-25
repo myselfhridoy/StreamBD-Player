@@ -65,6 +65,10 @@ export default function PlayerScreen() {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
       setIsLandscape(true);
     }
+
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    };
   }, [settings.landscapeOnly]);
 
   useEffect(() => {
