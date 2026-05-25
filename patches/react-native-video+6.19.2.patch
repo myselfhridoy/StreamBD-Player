@@ -37,10 +37,56 @@ index 462f47a..0c830fa 100644
  
              val mediaDrm = FrameworkMediaDrm.newInstance(uuid)
 diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
-index e16ac96..f1bda92 100644
+index e16ac96..1ed0ac1 100644
 --- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
 +++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
-@@ -2603,6 +2603,18 @@ public class ReactExoplayerView extends FrameLayout implements
+@@ -2147,6 +2147,7 @@ public class ReactExoplayerView extends FrameLayout implements
+                     TrackGroupArray groups = info.getTrackGroups(textRendererIndex);
+                     boolean trackFound = false;
+                     
++                    int globalTrackIndex = 0;
+                     for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+                         TrackGroup group = groups.get(groupIndex);
+                         for (int trackIndex = 0; trackIndex < group.length; trackIndex++) {
+@@ -2159,7 +2160,7 @@ public class ReactExoplayerView extends FrameLayout implements
+                                 isMatch = true;
+                             } else if ("index".equals(type)) {
+                                 int targetIndex = ReactBridgeUtils.safeParseInt(value, -1);
+-                                if (targetIndex == trackIndex) {
++                                if (targetIndex == globalTrackIndex) {
+                                     isMatch = true;
+                                 }
+                             }
+@@ -2171,6 +2172,7 @@ public class ReactExoplayerView extends FrameLayout implements
+                                 trackFound = true;
+                                 break;
+                             }
++                            globalTrackIndex++;
+                         }
+                         if (trackFound) break;
+                     }
+@@ -2250,6 +2252,20 @@ public class ReactExoplayerView extends FrameLayout implements
+                     if (iValue < groups.get(groupIndex).length) {
+                         tracks.set(0, iValue);
+                     }
++                } else if (trackType == C.TRACK_TYPE_AUDIO) {
++                    int globalIndex = 0;
++                    for (int i = 0; i < groups.length; ++i) {
++                        TrackGroup group = groups.get(i);
++                        for (int j = 0; j < group.length; j++) {
++                            if (globalIndex == iValue) {
++                                groupIndex = i;
++                                tracks.set(0, j);
++                                break;
++                            }
++                            globalIndex++;
++                        }
++                        if (groupIndex != C.INDEX_UNSET) break;
++                    }
+                 } else if (iValue < groups.length) {
+                     groupIndex = iValue;
+                 }
+@@ -2603,6 +2619,18 @@ public class ReactExoplayerView extends FrameLayout implements
          }
      }
  
