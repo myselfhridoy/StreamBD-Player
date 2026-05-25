@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
-import { StyleSheet, TextInput, ScrollView, Platform, TouchableOpacity, useColorScheme, View as RNView } from 'react-native';
-import { Text, View } from '@/components/Themed';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, TextInput, ScrollView, TouchableOpacity, View, Animated, Text } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const OutlinedInput = ({ label, value, onChangeText, placeholder }: any) => {
+  return (
+    <View style={styles.inputWrapper}>
+      {value.length === 0 ? (
+        <View style={styles.placeholderWrapper} pointerEvents="none">
+          <Text style={styles.placeholderText}>{label}</Text>
+        </View>
+      ) : (
+        <View style={styles.floatingLabelWrapper}>
+          <Text style={styles.floatingLabel}>{label}</Text>
+        </View>
+      )}
+      <TextInput
+        style={styles.outlinedInput}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={value.length === 0 ? '' : placeholder}
+        placeholderTextColor="#666"
+      />
+    </View>
+  );
+};
 
 export default function HomeScreen() {
   const [mediaUrl, setMediaUrl] = useState('');
@@ -13,26 +34,25 @@ export default function HomeScreen() {
   const [referer, setReferer] = useState('');
   const [origin, setOrigin] = useState('');
   const [drmUrl, setDrmUrl] = useState('');
-  const [userAgent, setUserAgent] = useState('Default');
-  const [drmScheme, setDrmScheme] = useState('widevine');
+  const [userAgent, setUserAgent] = useState('Firefox(PC)');
+  const [drmScheme, setDrmScheme] = useState('clearkey');
+  
+  const [showToast, setShowToast] = useState(false);
+  const toastAnim = useRef(new Animated.Value(0)).current;
 
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const handlePlay = () => {
     if (!mediaUrl) {
-      if (Platform.OS === 'web') {
-        window.alert('Please enter a Media Stream URL');
-      } else {
-        alert('Please enter a Media Stream URL');
-      }
+      // Show Toast
+      setShowToast(true);
+      Animated.sequence([
+        Animated.timing(toastAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.delay(2000),
+        Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true })
+      ]).start(() => setShowToast(false));
       return;
-    }
-    
-    if (Platform.OS === 'web') {
-      window.alert('Note: react-native-video is optimized for native Android/iOS. Web playback may be limited.');
     }
 
     router.push({
@@ -41,199 +61,188 @@ export default function HomeScreen() {
     });
   };
 
-  const gradientColors = isDark ? ['#111118', '#1c1c28'] as const : ['#f0f2f5', '#ffffff'] as const;
-  const cardColor = isDark ? 'rgba(35, 35, 50, 0.7)' : 'rgba(255, 255, 255, 0.9)';
-  const textColor = isDark ? '#ffffff' : '#1a1a24';
-  const placeholderColor = isDark ? '#6b6b80' : '#8a8aa3';
-  const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-  const inputBg = isDark ? 'rgba(0,0,0,0.3)' : '#f9f9fb';
-
   return (
-    <LinearGradient colors={gradientColors} style={styles.container}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Network Stream (Video) Play...</Text>
+        <TouchableOpacity onPress={() => router.push('/history')} style={styles.historyBtn}>
+          <MaterialIcons name="history" size={26} color="#ccc" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView 
-        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top + 20, 40) }]} 
+        contentContainerStyle={styles.scrollContent} 
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        
-        <Text style={[styles.headerText, { color: textColor }]}>Stream Setup</Text>
-        
-        <RNView style={[styles.card, { backgroundColor: cardColor, borderColor: inputBorder }]}>
-          
-          <Text style={[styles.label, { color: textColor }]}>Media Stream URL</Text>
-          <TextInput
-            style={[styles.input, { borderColor: inputBorder, color: textColor, backgroundColor: inputBg }]}
-            placeholder="https://example.com/stream.m3u8"
-            placeholderTextColor={placeholderColor}
-            value={mediaUrl}
-            onChangeText={setMediaUrl}
-          />
-          
-          <Text style={[styles.label, { color: textColor }]}>Cookie Value (Optional)</Text>
-          <TextInput
-            style={[styles.input, { borderColor: inputBorder, color: textColor, backgroundColor: inputBg }]}
-            placeholder="key=value;"
-            placeholderTextColor={placeholderColor}
-            value={cookie}
-            onChangeText={setCookie}
-          />
+        <OutlinedInput label="Media Stream URL" value={mediaUrl} onChangeText={setMediaUrl} />
+        <OutlinedInput label="Cookie Value" value={cookie} onChangeText={setCookie} />
+        <OutlinedInput label="Referer Value" value={referer} onChangeText={setReferer} />
+        <OutlinedInput label="Origin Value" value={origin} onChangeText={setOrigin} />
+        <OutlinedInput label="DRM License URL" value={drmUrl} onChangeText={setDrmUrl} />
 
-          <Text style={[styles.label, { color: textColor }]}>Referer Value (Optional)</Text>
-          <TextInput
-            style={[styles.input, { borderColor: inputBorder, color: textColor, backgroundColor: inputBg }]}
-            placeholder="https://referrer.com"
-            placeholderTextColor={placeholderColor}
-            value={referer}
-            onChangeText={setReferer}
-          />
-
-          <Text style={[styles.label, { color: textColor }]}>Origin Value (Optional)</Text>
-          <TextInput
-            style={[styles.input, { borderColor: inputBorder, color: textColor, backgroundColor: inputBg }]}
-            placeholder="https://origin.com"
-            placeholderTextColor={placeholderColor}
-            value={origin}
-            onChangeText={setOrigin}
-          />
-
-          <Text style={[styles.label, { color: textColor }]}>DRM License URL (Optional)</Text>
-          <TextInput
-            style={[styles.input, { borderColor: inputBorder, color: textColor, backgroundColor: inputBg }]}
-            placeholder="https://license-server.com"
-            placeholderTextColor={placeholderColor}
-            value={drmUrl}
-            onChangeText={setDrmUrl}
-          />
-
-          <RNView style={styles.row}>
-            <RNView style={[styles.flex1, { marginRight: 8 }]}>
-              <Text style={[styles.label, { color: textColor }]}>User Agent</Text>
-              <RNView style={[styles.pickerContainer, { borderColor: inputBorder, backgroundColor: inputBg }]}>
+        <View style={styles.row}>
+          <View style={[styles.flex1, { marginRight: 5 }]}>
+            <View style={styles.inputWrapper}>
+              <View style={styles.floatingLabelWrapper}>
+                <Text style={styles.floatingLabel}>UserAgent</Text>
+              </View>
+              <View style={[styles.outlinedInput, { paddingHorizontal: 0, justifyContent: 'center' }]}>
                 <Picker
                   selectedValue={userAgent}
-                  onValueChange={(itemValue) => setUserAgent(itemValue)}
-                  style={{ color: textColor, backgroundColor: 'transparent', width: '100%', height: '100%', border: 'none', outline: 'none' } as any}
-                  dropdownIconColor={textColor}
+                  onValueChange={(val) => setUserAgent(val)}
+                  style={{ color: '#fff', width: '100%', height: 50, backgroundColor: 'transparent' } as any}
+                  dropdownIconColor="#ccc"
                 >
                   <Picker.Item label="Default" value="Default" />
-                  <Picker.Item label="Chrome" value="Chrome" />
-                  <Picker.Item label="Firefox" value="Firefox" />
+                  <Picker.Item label="Chrome(Android)" value="Chrome(Android)" />
+                  <Picker.Item label="Chrome(PC)" value="Chrome(PC)" />
+                  <Picker.Item label="Firefox(PC)" value="Firefox(PC)" />
+                  <Picker.Item label="iPhone" value="iPhone" />
+                  <Picker.Item label="Custom" value="Custom" />
                 </Picker>
-              </RNView>
-            </RNView>
+              </View>
+            </View>
+          </View>
 
-            <RNView style={[styles.flex1, { marginLeft: 8 }]}>
-              <Text style={[styles.label, { color: textColor }]}>DRM Scheme</Text>
-              <RNView style={[styles.pickerContainer, { borderColor: inputBorder, backgroundColor: inputBg }]}>
+          <View style={[styles.flex1, { marginLeft: 5 }]}>
+            <View style={styles.inputWrapper}>
+              <View style={styles.floatingLabelWrapper}>
+                <Text style={styles.floatingLabel}>DrmScheme</Text>
+              </View>
+              <View style={[styles.outlinedInput, { paddingHorizontal: 0, justifyContent: 'center' }]}>
                 <Picker
                   selectedValue={drmScheme}
-                  onValueChange={(itemValue) => setDrmScheme(itemValue)}
-                  style={{ color: textColor, backgroundColor: 'transparent', width: '100%', height: '100%', border: 'none', outline: 'none' } as any}
-                  dropdownIconColor={textColor}
+                  onValueChange={(val) => setDrmScheme(val)}
+                  style={{ color: '#fff', width: '100%', height: 50, backgroundColor: 'transparent' } as any}
+                  dropdownIconColor="#ccc"
                 >
-                  <Picker.Item label="Widevine" value="widevine" />
-                  <Picker.Item label="PlayReady" value="playready" />
-                  <Picker.Item label="ClearKey" value="clearkey" />
+                  <Picker.Item label="widevine" value="widevine" />
+                  <Picker.Item label="playready" value="playready" />
+                  <Picker.Item label="clearkey" value="clearkey" />
                 </Picker>
-              </RNView>
-            </RNView>
-          </RNView>
-        </RNView>
+              </View>
+            </View>
+          </View>
+        </View>
         
-        {/* Plenty of padding to allow scrolling past the FAB and Bottom Tabs */}
-        <RNView style={{ height: 160 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* Custom Toast */}
+      {showToast && (
+        <Animated.View style={[styles.toast, { opacity: toastAnim, transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
+          <MaterialIcons name="play-circle-outline" size={24} color="#f39c12" style={{ marginRight: 8 }} />
+          <Text style={styles.toastText}>Please check the play URL</Text>
+        </Animated.View>
+      )}
+
+      {/* FAB */}
       <TouchableOpacity 
-        style={[styles.fabShadow, { bottom: Math.max(insets.bottom + 85, 90) }]} 
+        style={[styles.fab, { bottom: Math.max(insets.bottom + 20, 30) }]} 
         activeOpacity={0.8} 
         onPress={handlePlay}
       >
-        <LinearGradient 
-          colors={['#4F46E5', '#7C3AED']} 
-          start={{ x: 0, y: 0 }} 
-          end={{ x: 1, y: 1 }} 
-          style={[styles.fab, { borderRadius: 34 }]}
-        >
-          <MaterialIcons name="play-arrow" size={34} color="#fff" />
-        </LinearGradient>
+        <MaterialIcons name="play-arrow" size={32} color="#3b82f6" />
       </TouchableOpacity>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#121212', // Pure dark theme from screenshot
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  historyBtn: {
+    padding: 5,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
-  headerText: {
-    fontSize: 34,
-    fontWeight: '800',
+  inputWrapper: {
     marginBottom: 20,
-    letterSpacing: -0.5,
+    position: 'relative',
   },
-  card: {
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-    elevation: 5,
+  placeholderWrapper: {
+    position: 'absolute',
+    left: 15,
+    top: 15,
+    zIndex: 1,
   },
-  label: {
+  placeholderText: {
+    color: '#ccc',
+    fontSize: 16,
+  },
+  floatingLabelWrapper: {
+    position: 'absolute',
+    left: 10,
+    top: -8,
+    backgroundColor: '#121212',
+    paddingHorizontal: 4,
+    zIndex: 2,
+  },
+  floatingLabel: {
+    color: '#888',
     fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 8,
-    marginLeft: 4,
-    opacity: 0.7,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  input: {
-    height: 52,
+  outlinedInput: {
+    height: 54,
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    marginBottom: 20,
-    fontSize: 15,
-    fontWeight: '500',
+    borderColor: '#333',
+    borderRadius: 6,
+    paddingHorizontal: 15,
+    color: '#fff',
+    fontSize: 16,
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
   },
   flex1: {
     flex: 1,
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderRadius: 14,
-    overflow: 'hidden',
-    height: 52,
-    justifyContent: 'center',
-  },
-  fabShadow: {
+  toast: {
     position: 'absolute',
-    right: 24,
-    elevation: 10,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    borderRadius: 34,
+    bottom: 100,
+    alignSelf: 'center',
+    backgroundColor: '#2a2a2a',
+    borderRadius: 30,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 5,
+  },
+  toastText: {
+    color: '#ccc',
+    fontSize: 16,
   },
   fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    position: 'absolute',
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#222',
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
 });

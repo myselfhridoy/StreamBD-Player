@@ -5,6 +5,8 @@ import Video, { DRMType, OnLoadData, OnProgressData, ReactVideoSource } from 're
 import Slider from '@react-native-community/slider';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
@@ -33,6 +35,7 @@ export default function PlayerScreen() {
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch'>('contain');
   const [isPiPActive, setIsPiPActive] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
@@ -99,8 +102,24 @@ export default function PlayerScreen() {
     }
   };
 
-  const handleLoad = (data: OnLoadData) => {
+  const handleLoad = async (data: OnLoadData) => {
     setIsBuffering(false);
+    
+    // Save to history if it loads successfully
+    if (mediaUrl) {
+      try {
+        const existing = await AsyncStorage.getItem('streamHistory');
+        let historyList = existing ? JSON.parse(existing) : [];
+        // Remove if exists to push to top
+        historyList = historyList.filter((item: any) => item.url !== mediaUrl);
+        historyList.unshift({ url: mediaUrl, timestamp: Date.now() });
+        // Keep last 50 items
+        if (historyList.length > 50) historyList.pop();
+        await AsyncStorage.setItem('streamHistory', JSON.stringify(historyList));
+      } catch (e) {
+        console.log('Error saving history', e);
+      }
+    }
     
     // Live detection
     if (!data.duration || data.duration <= 0 || data.duration > 86400) {
@@ -147,6 +166,17 @@ export default function PlayerScreen() {
     }
   };
 
+  const toggleRotation = async () => {
+    if (isLandscape) {
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      setIsLandscape(false);
+    } else {
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      setIsLandscape(true);
+    }
+    showControlsUI();
+  };
+
   const formatTime = (seconds: number) => {
     if (isNaN(seconds) || seconds < 0) return '00:00';
     const h = Math.floor(seconds / 3600);
@@ -167,9 +197,36 @@ export default function PlayerScreen() {
   let drmConfig = undefined;
   if (drmUrl) {
     let type = DRMType.WIDEVINE;
+    let finalLicenseServer = drmUrl as string;
+    
     if (drmScheme === 'playready') type = DRMType.PLAYREADY;
-    else if (drmScheme === 'clearkey') type = DRMType.CLEARKEY;
-    drmConfig = { type, licenseServer: drmUrl as string };
+    else if (drmScheme === 'clearkey') {
+      type = DRMType.CLEARKEY;
+      if (finalLicenseServer.includes(':') && !finalLicenseServer.startsWith('http')) {
+        try {
+          const [kidHex, keyHex] = finalLicenseServer.split(':');
+          const hexToBase64Url = (hex: string) => {
+            const bytes = new Uint8Array(hex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []);
+            let binary = '';
+            bytes.forEach(b => binary += String.fromCharCode(b));
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          };
+          const clearkeyJson = {
+            keys: [{ kty: 'oct', k: hexToBase64Url(keyHex), kid: hexToBase64Url(kidHex) }],
+            type: 'temporary'
+          };
+          finalLicenseServer = JSON.stringify(clearkeyJson);
+        } catch (e) {
+          console.log('Failed to parse kid:key', e);
+        }
+      }
+    }
+    
+    drmConfig = { 
+      type, 
+      licenseServer: finalLicenseServer,
+      headers: Object.keys(headers).length > 0 ? headers : undefined
+    };
   }
 
   return (
@@ -353,6 +410,12 @@ export default function PlayerScreen() {
             <TouchableOpacity style={styles.smallIconButton} onPress={cycleResizeMode}>
               <MaterialIcons 
                 name={resizeMode === 'contain' ? 'aspect-ratio' : resizeMode === 'cover' ? 'crop-free' : 'settings-overscan'} 
+                size={24} color="#fff" 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.smallIconButton} onPress={toggleRotation}>
+              <MaterialIcons 
+                name={isLandscape ? 'screen-lock-portrait' : 'screen-rotation'} 
                 size={24} color="#fff" 
               />
             </TouchableOpacity>

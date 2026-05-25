@@ -36,7 +36,16 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "react-native-video"
+      "react-native-video",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "./plugins/withPiP.js"
     ],
     "experiments": {
       "typedRoutes": true

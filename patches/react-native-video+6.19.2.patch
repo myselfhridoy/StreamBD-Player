@@ -1,0 +1,38 @@
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/DRMManager.kt b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/DRMManager.kt
+index 462f47a..0c830fa 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/DRMManager.kt
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/DRMManager.kt
+@@ -6,6 +6,7 @@ import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
+ import androidx.media3.exoplayer.drm.DrmSessionManager
+ import androidx.media3.exoplayer.drm.FrameworkMediaDrm
+ import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
++import androidx.media3.exoplayer.drm.LocalMediaDrmCallback
+ import androidx.media3.exoplayer.drm.UnsupportedDrmException
+ import com.brentvatne.common.api.DRMProps
+ import java.util.UUID
+@@ -23,12 +24,19 @@ class DRMManager(private val dataSourceFactory: HttpDataSource.Factory) : DRMMan
+         }
+ 
+         try {
+-            val drmCallback = HttpMediaDrmCallback(drmProps.drmLicenseServer, dataSourceFactory)
+-
+-            // Set DRM headers
+-            val keyRequestPropertiesArray = drmProps.drmLicenseHeader
+-            for (i in keyRequestPropertiesArray.indices step 2) {
+-                drmCallback.setKeyRequestProperty(keyRequestPropertiesArray[i], keyRequestPropertiesArray[i + 1])
++            val licenseServer = drmProps.drmLicenseServer
++            val drmCallback = if (licenseServer != null && licenseServer.startsWith("{")) {
++                LocalMediaDrmCallback(licenseServer.toByteArray())
++            } else {
++                val httpCallback = HttpMediaDrmCallback(licenseServer, dataSourceFactory)
++                // Set DRM headers
++                val keyRequestPropertiesArray = drmProps.drmLicenseHeader
++                if (keyRequestPropertiesArray != null) {
++                    for (i in keyRequestPropertiesArray.indices step 2) {
++                        httpCallback.setKeyRequestProperty(keyRequestPropertiesArray[i], keyRequestPropertiesArray[i + 1])
++                    }
++                }
++                httpCallback
+             }
+ 
+             val mediaDrm = FrameworkMediaDrm.newInstance(uuid)
