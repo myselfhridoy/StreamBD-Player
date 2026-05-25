@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,16 +35,24 @@ export default function HistoryScreen() {
     }
   };
 
-  const playItem = (url: string) => {
+  const playItem = (item: any) => {
     router.push({
       pathname: '/player',
-      params: { mediaUrl: url, userAgent: 'Default', drmScheme: 'clearkey' } // Use defaults for history playback
+      params: { 
+        mediaUrl: item.url, 
+        cookie: item.cookie || '',
+        referer: item.referer || '',
+        origin: item.origin || '',
+        drmUrl: item.drmUrl || '',
+        userAgent: item.userAgent || 'Default', 
+        drmScheme: item.drmScheme || 'clearkey' 
+      }
     });
   };
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.historyCard}>
-      <TouchableOpacity style={styles.historyUrlBtn} onPress={() => playItem(item.url)}>
+      <TouchableOpacity style={styles.historyUrlBtn} onPress={() => playItem(item)}>
         <Text style={styles.historyText} numberOfLines={2} ellipsizeMode="tail">
           {item.url}
         </Text>
@@ -57,6 +65,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
+      <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <MaterialIcons name="arrow-back" size={28} color="#fff" />

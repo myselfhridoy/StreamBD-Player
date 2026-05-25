@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, TextInput, ScrollView, TouchableOpacity, View, Animated, Text } from 'react-native';
+import { StyleSheet, TextInput, ScrollView, TouchableOpacity, View, Animated, Text, Modal } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
@@ -34,11 +34,16 @@ export default function HomeScreen() {
   const [referer, setReferer] = useState('');
   const [origin, setOrigin] = useState('');
   const [drmUrl, setDrmUrl] = useState('');
-  const [userAgent, setUserAgent] = useState('Firefox(PC)');
+  const [userAgent, setUserAgent] = useState('Default');
   const [drmScheme, setDrmScheme] = useState('clearkey');
   
   const [showToast, setShowToast] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
+
+  // Custom UA Modal State
+  const [showCustomUAModal, setShowCustomUAModal] = useState(false);
+  const [customUAInput, setCustomUAInput] = useState('');
+  const [customUA, setCustomUA] = useState('');
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -65,7 +70,7 @@ export default function HomeScreen() {
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
       {/* Custom Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Network Stream (Video) Play...</Text>
+        <Text style={styles.headerTitle}>StreamBD Player</Text>
         <TouchableOpacity onPress={() => router.push('/history')} style={styles.historyBtn}>
           <MaterialIcons name="history" size={26} color="#ccc" />
         </TouchableOpacity>
@@ -91,16 +96,23 @@ export default function HomeScreen() {
               <View style={[styles.outlinedInput, { paddingHorizontal: 0, justifyContent: 'center' }]}>
                 <Picker
                   selectedValue={userAgent}
-                  onValueChange={(val) => setUserAgent(val)}
+                  onValueChange={(val) => {
+                    if (val === 'Custom') {
+                      setShowCustomUAModal(true);
+                    } else {
+                      setUserAgent(val);
+                    }
+                  }}
                   style={{ color: '#fff', width: '100%', height: 50, backgroundColor: 'transparent' } as any}
                   dropdownIconColor="#ccc"
                 >
                   <Picker.Item label="Default" value="Default" />
-                  <Picker.Item label="Chrome(Android)" value="Chrome(Android)" />
-                  <Picker.Item label="Chrome(PC)" value="Chrome(PC)" />
-                  <Picker.Item label="Firefox(PC)" value="Firefox(PC)" />
-                  <Picker.Item label="iPhone" value="iPhone" />
-                  <Picker.Item label="Custom" value="Custom" />
+                  <Picker.Item label="Chrome(Android)" value="Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36" />
+                  <Picker.Item label="Chrome(PC)" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36" />
+                  <Picker.Item label="Firefox(PC)" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0" />
+                  <Picker.Item label="iPhone" value="Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Mobile/15E148 Safari/604.1" />
+                  {customUA !== '' && <Picker.Item label="Custom UA" value={customUA} />}
+                  <Picker.Item label="Add Custom..." value="Custom" />
                 </Picker>
               </View>
             </View>
@@ -140,12 +152,42 @@ export default function HomeScreen() {
 
       {/* FAB */}
       <TouchableOpacity 
-        style={[styles.fab, { bottom: Math.max(insets.bottom + 20, 30) }]} 
+        style={[styles.fab, { bottom: Math.max(insets.bottom + 80, 90) }]} 
         activeOpacity={0.8} 
         onPress={handlePlay}
       >
         <MaterialIcons name="play-arrow" size={32} color="#3b82f6" />
       </TouchableOpacity>
+
+      {/* Custom UA Modal */}
+      <Modal visible={showCustomUAModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Custom User Agent</Text>
+            <TextInput 
+              style={styles.modalInput} 
+              value={customUAInput} 
+              onChangeText={setCustomUAInput} 
+              placeholder="Mozilla/5.0..." 
+              placeholderTextColor="#666" 
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setShowCustomUAModal(false)}>
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { 
+                if (customUAInput.trim()) {
+                  setCustomUA(customUAInput.trim()); 
+                  setUserAgent(customUAInput.trim()); 
+                }
+                setShowCustomUAModal(false); 
+              }}>
+                <Text style={styles.modalOk}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -244,5 +286,50 @@ const styles = StyleSheet.create({
     elevation: 8,
     borderWidth: 1,
     borderColor: '#333',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#1e1e1e',
+    width: '85%',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 6,
+    color: '#fff',
+    paddingHorizontal: 15,
+    height: 50,
+    marginBottom: 20,
+    backgroundColor: '#121212',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  modalCancel: {
+    color: '#aaa',
+    fontSize: 16,
+    marginRight: 20,
+    fontWeight: '600',
+  },
+  modalOk: {
+    color: '#3b82f6',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

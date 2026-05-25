@@ -112,7 +112,16 @@ export default function PlayerScreen() {
         let historyList = existing ? JSON.parse(existing) : [];
         // Remove if exists to push to top
         historyList = historyList.filter((item: any) => item.url !== mediaUrl);
-        historyList.unshift({ url: mediaUrl, timestamp: Date.now() });
+        historyList.unshift({ 
+          url: mediaUrl, 
+          cookie,
+          referer,
+          origin,
+          drmUrl,
+          userAgent,
+          drmScheme,
+          timestamp: Date.now() 
+        });
         // Keep last 50 items
         if (historyList.length > 50) historyList.pop();
         await AsyncStorage.setItem('streamHistory', JSON.stringify(historyList));
