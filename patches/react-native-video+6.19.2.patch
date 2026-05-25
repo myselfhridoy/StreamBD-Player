@@ -36,3 +36,45 @@ index 462f47a..0c830fa 100644
              }
  
              val mediaDrm = FrameworkMediaDrm.newInstance(uuid)
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
+index e16ac96..f1bda92 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerView.java
+@@ -2603,6 +2603,18 @@ public class ReactExoplayerView extends FrameLayout implements
+         }
+     }
+ 
++    public void setSkipSilence(boolean skipSilence) {
++        if (player != null) {
++            player.setSkipSilenceEnabled(skipSilence);
++        }
++    }
++
++    public void setEnableTunneling(boolean enableTunneling) {
++        if (trackSelector != null) {
++            trackSelector.setParameters(trackSelector.buildUponParameters().setTunnelingEnabled(enableTunneling));
++        }
++    }
++
+     public void setMaxBitRateModifier(int newMaxBitRate) {
+         maxBitRate = newMaxBitRate;
+         if (player != null && isUsingVideoABR()) {
+diff --git a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerViewManager.kt b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerViewManager.kt
+index b9e0656..ac656ca 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerViewManager.kt
++++ b/node_modules/react-native-video/android/src/main/java/com/brentvatne/exoplayer/ReactExoplayerViewManager.kt
+@@ -263,4 +263,14 @@ class ReactExoplayerViewManager(private val config: ReactExoplayerConfig) : View
+         val controlsConfig = ControlsConfig.parse(controlsStyles)
+         videoView.setControlsStyles(controlsConfig)
+     }
++
++    @ReactProp(name = "skipSilence", defaultBoolean = false)
++    fun setSkipSilence(videoView: ReactExoplayerView, skipSilence: Boolean) {
++        videoView.setSkipSilence(skipSilence)
++    }
++
++    @ReactProp(name = "enableTunneling", defaultBoolean = false)
++    fun setEnableTunneling(videoView: ReactExoplayerView, enableTunneling: Boolean) {
++        videoView.setEnableTunneling(enableTunneling)
++    }
+ }

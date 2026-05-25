@@ -1,18 +1,22 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Animated, TouchableWithoutFeedback, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, useTVEventHandler, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import Video, { DRMType, OnLoadData, OnProgressData, ReactVideoSource } from 'react-native-video';
+import Video, { DRMType, OnLoadData, ReactVideoSource } from 'react-native-video';
 import Slider from '@react-native-community/slider';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Brightness from 'expo-brightness';
+import { VolumeManager } from 'react-native-volume-manager';
+import { useSettings } from './context/SettingsContext';
 
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme } = params;
 
+  const { settings } = useSettings();
   const videoRef = useRef<Video>(null);
   
   // Basic Playback State
@@ -41,18 +45,131 @@ export default function PlayerScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<'audio' | 'subs' | 'quality' | 'speed'>('audio');
   
+  // Overlay feedback
+  const [overlayText, setOverlayText] = useState('');
+  const overlayTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const showOverlayFeedback = (text: string) => {
+    setOverlayText(text);
+    if (overlayTimer.current) clearTimeout(overlayTimer.current);
+    overlayTimer.current = setTimeout(() => setOverlayText(''), 1500);
+  };
+
   // Animation & Timers
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Apply initial Landscape lock if needed
+    if (settings.landscapeOnly) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      setIsLandscape(true);
+    }
+  }, [settings.landscapeOnly]);
+
+  useEffect(() => {
     if (!showSettings) {
       startControlsTimeout();
     } else {
-      clearControlsTimeout(); // Keep controls visible while settings are open
+      clearControlsTimeout();
     }
     return () => clearControlsTimeout();
   }, [paused, showSettings]);
+
+  // Auto PiP on AppState background
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' && settings.autoPiP && !paused) {
+        togglePiP();
+      }
+    });
+    return () => sub.remove();
+  }, [settings.autoPiP, paused]);
+
+  // Resume playback logic on unmount
+  useEffect(() => {
+    return () => {
+      if (settings.resumePlay && currentTime > 0 && duration > 0 && !isLive && mediaUrl) {
+        AsyncStorage.setItem(`resume_${mediaUrl}`, currentTime.toString()).catch(() => {});
+      }
+    };
+  }, [currentTime, settings.resumePlay, duration, isLive, mediaUrl]);
+
+  // TV D-Pad Support
+  const tvSeekTimer = useRef<NodeJS.Timeout | null>(null);
+  const tvPausedRef = useRef(false);
+
+  useTVEventHandler((evt) => {
+    if (!evt || !evt.eventType) return;
+    const key = evt.eventType;
+    if (key === 'right' || key === 'left') {
+      const delta = key === 'right' ? settings.seekDuration : -settings.seekDuration;
+      
+      setCurrentTime((prev) => {
+        const nextTime = Math.max(0, Math.min(prev + delta, duration || 99999));
+        videoRef.current?.seek(nextTime);
+        showOverlayFeedback(`${key === 'right' ? '+' : '-'}${settings.seekDuration}s`);
+        return nextTime;
+      });
+
+      if (!paused && !tvPausedRef.current) {
+        setPaused(true);
+        tvPausedRef.current = true;
+      }
+      showControlsUI();
+
+      if (tvSeekTimer.current) clearTimeout(tvSeekTimer.current);
+      tvSeekTimer.current = setTimeout(() => {
+        if (tvPausedRef.current) {
+          setPaused(false);
+          tvPausedRef.current = false;
+        }
+      }, 500);
+    } else if (key === 'select' || key === 'playPause') {
+      setPaused(!paused);
+    }
+  });
+
+  // Gestures (Volume & Brightness)
+  const startVal = useRef({ vol: 0, bright: 0 });
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dy) > 15,
+      onPanResponderGrant: async () => {
+        if (settings.volumeGesture) {
+          const v = await VolumeManager.getVolume();
+          startVal.current.vol = typeof v === 'number' ? v : v.volume;
+        }
+        if (settings.brightnessGesture) {
+          const { status } = await Brightness.requestPermissionsAsync();
+          if (status === 'granted') {
+            startVal.current.bright = await Brightness.getBrightnessAsync();
+          }
+        }
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const { moveX, dy } = gestureState;
+        const width = Dimensions.get('window').width;
+        const height = Dimensions.get('window').height;
+        const delta = -(dy / height); // Swipe up = positive delta
+
+        if (moveX < width / 2 && settings.brightnessGesture) {
+          // Left side: Brightness
+          let newBright = startVal.current.bright + delta;
+          newBright = Math.max(0, Math.min(newBright, 1));
+          Brightness.setSystemBrightnessAsync(newBright);
+          showOverlayFeedback(`Brightness: ${Math.round(newBright * 100)}%`);
+        } else if (moveX >= width / 2 && settings.volumeGesture) {
+          // Right side: Volume
+          let newVol = startVal.current.vol + delta;
+          newVol = Math.max(0, Math.min(newVol, 1));
+          VolumeManager.setVolume(newVol);
+          showOverlayFeedback(`Volume: ${Math.round(newVol * 100)}%`);
+        }
+      },
+    })
+  ).current;
 
   const clearControlsTimeout = () => {
     if (controlsTimeoutRef.current) {
@@ -64,29 +181,20 @@ export default function PlayerScreen() {
   const startControlsTimeout = () => {
     clearControlsTimeout();
     if (!paused && !showSettings) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        hideControls();
-      }, 4000);
+      controlsTimeoutRef.current = setTimeout(() => hideControls(), 4000);
     }
   };
 
   const showControlsUI = () => {
     setShowControls(true);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     startControlsTimeout();
   };
 
   const hideControls = () => {
-    if (showSettings) return; // Don't hide if settings are open
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => setShowControls(false));
+    if (showSettings) return; 
+    Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true })
+      .start(() => setShowControls(false));
   };
 
   const toggleControls = () => {
@@ -95,42 +203,37 @@ export default function PlayerScreen() {
       startControlsTimeout();
       return;
     }
-    if (showControls) {
-      hideControls();
-    } else {
-      showControlsUI();
-    }
+    if (showControls) hideControls();
+    else showControlsUI();
   };
 
   const handleLoad = async (data: OnLoadData) => {
     setIsBuffering(false);
     
-    // Save to history if it loads successfully
+    // Save to history
     if (mediaUrl) {
       try {
         const existing = await AsyncStorage.getItem('streamHistory');
         let historyList = existing ? JSON.parse(existing) : [];
-        // Remove if exists to push to top
         historyList = historyList.filter((item: any) => item.url !== mediaUrl);
         historyList.unshift({ 
-          url: mediaUrl, 
-          cookie,
-          referer,
-          origin,
-          drmUrl,
-          userAgent,
-          drmScheme,
-          timestamp: Date.now() 
+          url: mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, timestamp: Date.now() 
         });
-        // Keep last 50 items
         if (historyList.length > 50) historyList.pop();
         await AsyncStorage.setItem('streamHistory', JSON.stringify(historyList));
-      } catch (e) {
-        console.log('Error saving history', e);
-      }
+      } catch (e) { }
+    }
+
+    // Resume logic
+    if (settings.resumePlay && mediaUrl) {
+      try {
+        const savedTime = await AsyncStorage.getItem(`resume_${mediaUrl}`);
+        if (savedTime && parseFloat(savedTime) > 0) {
+          videoRef.current?.seek(parseFloat(savedTime));
+        }
+      } catch(e) {}
     }
     
-    // Live detection
     if (!data.duration || data.duration <= 0 || data.duration > 86400) {
       setIsLive(true);
       setDuration(0);
@@ -139,51 +242,25 @@ export default function PlayerScreen() {
       setDuration(data.duration);
     }
 
-    // Populate Tracks
     if (data.audioTracks) setAudioTracks(data.audioTracks);
     if (data.textTracks) setTextTracks(data.textTracks);
-    
-    // Filter and sort video tracks (unique resolutions)
     if (data.videoTracks) {
       const uniqueHeights = new Set<number>();
       const filteredVideos = data.videoTracks.filter(t => {
         if (!t.height || uniqueHeights.has(t.height)) return false;
         uniqueHeights.add(t.height);
         return true;
-      }).sort((a, b) => b.height - a.height); // Highest resolution first
+      }).sort((a, b) => b.height - a.height);
       setVideoTracks(filteredVideos);
     }
   };
 
-  const cycleResizeMode = () => {
-    if (resizeMode === 'contain') setResizeMode('cover');
-    else if (resizeMode === 'cover') setResizeMode('stretch');
-    else setResizeMode('contain');
-    showControlsUI();
-  };
-
   const togglePiP = () => {
-    if (Platform.OS === 'web') {
-      window.alert('Picture-in-Picture is a native feature and is not supported in the web preview.');
-      return;
-    }
+    if (Platform.OS === 'web') return;
     setIsPiPActive(true);
     try {
       videoRef.current?.restoreUserInterfaceForPictureInPictureStopCompleted(true);
-    } catch (e) {
-      console.log('PiP Error:', e);
-    }
-  };
-
-  const toggleRotation = async () => {
-    if (isLandscape) {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-      setIsLandscape(false);
-    } else {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      setIsLandscape(true);
-    }
-    showControlsUI();
+    } catch (e) { }
   };
 
   const formatTime = (seconds: number) => {
@@ -195,14 +272,12 @@ export default function PlayerScreen() {
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // Construct headers
   const headers: Record<string, string> = {};
   if (cookie) headers['Cookie'] = cookie as string;
   if (referer) headers['Referer'] = referer as string;
   if (origin) headers['Origin'] = origin as string;
   if (userAgent && userAgent !== 'Default') headers['User-Agent'] = userAgent as string;
 
-  // Configure DRM
   let drmConfig = undefined;
   if (drmUrl) {
     let type = DRMType.WIDEVINE;
@@ -225,54 +300,51 @@ export default function PlayerScreen() {
             type: 'temporary'
           };
           finalLicenseServer = JSON.stringify(clearkeyJson);
-        } catch (e) {
-          console.log('Failed to parse kid:key', e);
-        }
+        } catch (e) { }
       }
     }
-    
-    drmConfig = { 
-      type, 
-      licenseServer: finalLicenseServer,
-      headers: Object.keys(headers).length > 0 ? headers : undefined
-    };
+    drmConfig = { type, licenseServer: finalLicenseServer, headers: Object.keys(headers).length > 0 ? headers : undefined };
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...panResponder.panHandlers}>
       <Stack.Screen options={{ headerShown: false, navigationBarHidden: true, statusBarHidden: true }} />
       
-      <TouchableWithoutFeedback onPress={toggleControls}>
-        <View style={styles.videoContainer}>
-          <Video
-            ref={videoRef}
-            source={{
-              uri: (mediaUrl as string) || '',
-              headers: Object.keys(headers).length > 0 ? headers : undefined,
-              drm: drmConfig,
-            } as ReactVideoSource}
-            controls={false}
-            paused={paused}
-            rate={playbackRate}
-            resizeMode={resizeMode}
-            pictureInPicture={isPiPActive}
-            selectedAudioTrack={selectedAudioTrack !== undefined ? { type: 'index', value: selectedAudioTrack } : undefined}
-            selectedTextTrack={selectedTextTrack === -1 ? { type: 'disabled' } : { type: 'index', value: selectedTextTrack }}
-            selectedVideoTrack={selectedVideoTrack === 0 ? { type: 'auto' } : { type: 'resolution', value: selectedVideoTrack }}
-            onLoad={handleLoad}
-            onProgress={(data) => setCurrentTime(data.currentTime)}
-            onBuffer={({ isBuffering }) => setIsBuffering(isBuffering)}
-            onPictureInPictureStatusChanged={(isActive) => setIsPiPActive(isActive.isActive)}
-            style={styles.video}
-            onError={(e) => console.log('Video Error:', e)}
-          />
-        </View>
-      </TouchableWithoutFeedback>
+      <TouchableOpacity activeOpacity={1} style={styles.videoContainer} onPress={toggleControls}>
+        <Video
+          ref={videoRef}
+          source={{ uri: (mediaUrl as string) || '', headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig } as ReactVideoSource}
+          controls={false}
+          paused={paused}
+          rate={playbackRate}
+          resizeMode={resizeMode}
+          pictureInPicture={isPiPActive}
+          selectedAudioTrack={selectedAudioTrack !== undefined ? { type: 'index', value: selectedAudioTrack } : undefined}
+          selectedTextTrack={selectedTextTrack === -1 ? { type: 'disabled' } : { type: 'index', value: selectedTextTrack }}
+          selectedVideoTrack={selectedVideoTrack === 0 ? { type: 'auto' } : { type: 'resolution', value: selectedVideoTrack }}
+          onLoad={handleLoad}
+          onProgress={(data) => setCurrentTime(data.currentTime)}
+          onBuffer={({ isBuffering }) => setIsBuffering(isBuffering)}
+          onPictureInPictureStatusChanged={(isActive) => setIsPiPActive(isActive.isActive)}
+          style={styles.video}
+          // Native Patches
+          //@ts-ignore
+          skipSilence={settings.skipSilence}
+          enableTunneling={settings.enableTunneling}
+        />
+      </TouchableOpacity>
 
       {/* Loading Indicator */}
       {isBuffering && (
         <View style={styles.loadingOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#E50914" />
+        </View>
+      )}
+
+      {/* Overlay Feedback Text */}
+      {overlayText !== '' && (
+        <View style={styles.feedbackOverlay} pointerEvents="none">
+          <Text style={styles.feedbackText}>{overlayText}</Text>
         </View>
       )}
 
@@ -349,11 +421,7 @@ export default function PlayerScreen() {
       )}
 
       {/* Custom Controls Overlay */}
-      <Animated.View 
-        style={[styles.controlsOverlay, { opacity: fadeAnim }]} 
-        pointerEvents={showControls && !showSettings ? 'box-none' : 'none'}
-      >
-        {/* Top Bar */}
+      <Animated.View style={[styles.controlsOverlay, { opacity: fadeAnim }]} pointerEvents={showControls && !showSettings ? 'box-none' : 'none'}>
         <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent']} style={styles.topGradient}>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
             <MaterialIcons name="arrow-back" size={32} color="#fff" />
@@ -368,26 +436,24 @@ export default function PlayerScreen() {
           </View>
         </LinearGradient>
 
-        {/* Center Controls */}
         <View style={styles.centerControls} pointerEvents="box-none">
           {!isLive && (
-            <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(Math.max(currentTime - 10, 0)); showControlsUI(); }}>
+            <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(Math.max(currentTime - settings.seekDuration, 0)); showControlsUI(); }}>
               <MaterialIcons name="replay-10" size={48} color="#fff" />
+              <Text style={styles.seekBtnText}>-{settings.seekDuration}s</Text>
             </TouchableOpacity>
           )}
-          
           <TouchableOpacity style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
             <MaterialIcons name={paused ? "play-arrow" : "pause"} size={64} color="#fff" />
           </TouchableOpacity>
-          
           {!isLive && (
-            <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(currentTime + 10); showControlsUI(); }}>
+            <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(currentTime + settings.seekDuration); showControlsUI(); }}>
               <MaterialIcons name="forward-10" size={48} color="#fff" />
+              <Text style={styles.seekBtnText}>+{settings.seekDuration}s</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Bottom Bar */}
         <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.bottomGradient}>
           {isLive ? (
             <View style={styles.liveContainer}>
@@ -398,35 +464,25 @@ export default function PlayerScreen() {
             <View style={styles.sliderContainer}>
               <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
               <Slider
-                style={styles.slider}
-                minimumValue={0}
-                maximumValue={duration}
-                value={currentTime}
-                minimumTrackTintColor="#E50914"
-                maximumTrackTintColor="rgba(255, 255, 255, 0.3)"
-                thumbTintColor="#E50914"
+                style={styles.slider} minimumValue={0} maximumValue={duration} value={currentTime}
+                minimumTrackTintColor="#E50914" maximumTrackTintColor="rgba(255, 255, 255, 0.3)" thumbTintColor="#E50914"
                 onSlidingStart={() => clearControlsTimeout()}
-                onSlidingComplete={(val) => {
-                  videoRef.current?.seek(val);
-                  showControlsUI();
-                }}
+                onSlidingComplete={(val) => { videoRef.current?.seek(val); showControlsUI(); }}
               />
               <Text style={styles.timeText}>{formatTime(duration)}</Text>
             </View>
           )}
-          {/* Bottom Right Controls */}
           <View style={styles.bottomRightControls}>
-            <TouchableOpacity style={styles.smallIconButton} onPress={cycleResizeMode}>
-              <MaterialIcons 
-                name={resizeMode === 'contain' ? 'aspect-ratio' : resizeMode === 'cover' ? 'crop-free' : 'settings-overscan'} 
-                size={24} color="#fff" 
-              />
+            <TouchableOpacity style={styles.smallIconButton} onPress={() => {
+              setResizeMode(r => r === 'contain' ? 'cover' : r === 'cover' ? 'stretch' : 'contain'); showControlsUI();
+            }}>
+              <MaterialIcons name={resizeMode === 'contain' ? 'aspect-ratio' : resizeMode === 'cover' ? 'crop-free' : 'settings-overscan'} size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.smallIconButton} onPress={toggleRotation}>
-              <MaterialIcons 
-                name={isLandscape ? 'screen-lock-portrait' : 'screen-rotation'} 
-                size={24} color="#fff" 
-              />
+            <TouchableOpacity style={styles.smallIconButton} onPress={() => {
+              ScreenOrientation.lockAsync(isLandscape ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE);
+              setIsLandscape(!isLandscape); showControlsUI();
+            }}>
+              <MaterialIcons name={isLandscape ? 'screen-lock-portrait' : 'screen-rotation'} size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -437,27 +493,20 @@ export default function PlayerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000', width: '100%', height: '100%' },
-  videoContainer: { 
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    width: '100%', height: '100%',
-    justifyContent: 'center', alignItems: 'center',
-    zIndex: 1
-  },
+  videoContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', zIndex: 1 },
   video: { width: '100%', height: '100%' },
   loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
-  controlsOverlay: { 
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-    width: '100%', height: '100%',
-    justifyContent: 'space-between', zIndex: 20, elevation: 10 
-  },
+  feedbackOverlay: { position: 'absolute', top: '20%', alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.6)', padding: 15, borderRadius: 10, zIndex: 40 },
+  feedbackText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+  controlsOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', justifyContent: 'space-between', zIndex: 20, elevation: 10 },
   topGradient: { height: 100, paddingTop: 20, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
   topRightControls: { flexDirection: 'row', gap: 10 },
   bottomGradient: { height: 120, justifyContent: 'flex-end', paddingBottom: 20, paddingHorizontal: 30, width: '100%' },
   iconButton: { padding: 10, borderRadius: 24 },
   smallIconButton: { padding: 10 },
   centerControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40, width: '100%' },
-  centerBtn: { padding: 15, borderRadius: 40, backgroundColor: 'rgba(0,0,0,0.4)' },
+  centerBtn: { padding: 15, borderRadius: 40, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center' },
+  seekBtnText: { color: '#fff', fontSize: 12, marginTop: 4, fontWeight: 'bold' },
   playBtn: { padding: 20, borderRadius: 60, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 2, borderColor: 'transparent' },
   sliderContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, width: '100%' },
   slider: { flex: 1, height: 40, marginHorizontal: 15 },
@@ -466,8 +515,6 @@ const styles = StyleSheet.create({
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E50914', marginRight: 6 },
   liveText: { color: '#E50914', fontWeight: '800', fontSize: 14, letterSpacing: 1 },
   bottomRightControls: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: -15, width: '100%' },
-  
-  // Settings UI
   settingsOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 30, justifyContent: 'center', alignItems: 'center', elevation: 20 },
   settingsPanel: { width: '70%', height: '70%', backgroundColor: 'rgba(20,20,25,0.95)', borderRadius: 16, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   settingsSidebar: { width: 140, backgroundColor: 'rgba(0,0,0,0.3)', paddingTop: 20 },
