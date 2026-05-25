@@ -14,7 +14,7 @@ import { useSettings } from './context/SettingsContext';
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat } = params;
+  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup } = params;
 
   const { settings } = useSettings();
   const videoRef = useRef<VideoRef>(null);
@@ -24,8 +24,10 @@ export default function PlayerScreen() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isBuffering, setIsBuffering] = useState(true);
+  const [isReady, setIsReady] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLive, setIsLive] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   
   // Advanced Features State
   const [audioTracks, setAudioTracks] = useState<any[]>([]);
@@ -39,8 +41,8 @@ export default function PlayerScreen() {
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch' | 'auto'>('auto');
   const [isPiPActive, setIsPiPActive] = useState(false);
-  const [isLandscape, setIsLandscape] = useState(false);
-  const activeResizeMode = resizeMode === 'auto' ? (isLandscape ? 'cover' : 'contain') : resizeMode;
+  const [isLandscape, setIsLandscape] = useState(settings?.landscapeOnly || false);
+  const activeResizeMode = resizeMode === 'auto' ? 'contain' : resizeMode;
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
@@ -61,6 +63,7 @@ export default function PlayerScreen() {
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    checkFavoriteStatus();
     // Apply initial Landscape lock if needed
     if (settings.landscapeOnly) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
@@ -100,7 +103,43 @@ export default function PlayerScreen() {
     };
   }, [currentTime, settings.resumePlay, duration, isLive, mediaUrl]);
 
-  // TV D-Pad Support (removed useTVEventHandler as it's deprecated in RN 0.76+)
+  // Favorite Management
+  const checkFavoriteStatus = async () => {
+    try {
+      const data = await AsyncStorage.getItem('favorite_channels');
+      if (data) {
+        const favs = JSON.parse(data);
+        setIsFavorite(favs.some((f: any) => f.url === mediaUrl));
+      }
+    } catch (e) { }
+  };
+
+  const toggleFavorite = async () => {
+    try {
+      const data = await AsyncStorage.getItem('favorite_channels');
+      let favs = data ? JSON.parse(data) : [];
+      
+      if (isFavorite) {
+        favs = favs.filter((f: any) => f.url !== mediaUrl);
+        setIsFavorite(false);
+      } else {
+        if (channelName) {
+          favs.push({
+            url: mediaUrl,
+            name: channelName,
+            logo: channelLogo || '',
+            group: channelGroup || 'CHANNELS',
+            cookie: cookie || '',
+            userAgent: userAgent || 'Default'
+          });
+          setIsFavorite(true);
+        } else {
+          return;
+        }
+      }
+      await AsyncStorage.setItem('favorite_channels', JSON.stringify(favs));
+    } catch (e) { }
+  };
 
   // Cache volume and brightness to prevent async race conditions during fast swipes
   const currentVolume = useRef(0.5);
@@ -289,6 +328,9 @@ export default function PlayerScreen() {
   if (origin) headers['Origin'] = origin as string;
   if (userAgent && userAgent !== 'Default') headers['User-Agent'] = userAgent as string;
 
+  console.log("PLAYING MEDIA URL:", mediaUrl);
+  console.log("WITH HEADERS:", headers);
+
   let drmConfig = undefined;
   if (drmUrl) {
     let type = DRMType.WIDEVINE;
@@ -348,13 +390,14 @@ export default function PlayerScreen() {
           selectedTextTrack={selectedTextTrack === -1 ? { type: SelectedTrackType.DISABLED } : { type: SelectedTrackType.INDEX, value: selectedTextTrack }}
           selectedVideoTrack={selectedVideoTrack === 0 ? { type: SelectedVideoTrackType.AUTO } : { type: SelectedVideoTrackType.RESOLUTION, value: selectedVideoTrack }}
           onLoad={handleLoad}
+          onReadyForDisplay={() => setIsReady(true)}
           onAudioTracks={handleAudioTracks}
           onTextTracks={handleTextTracks}
           onVideoTracks={handleVideoTracks}
           onProgress={(data) => setCurrentTime(data.currentTime)}
           onBuffer={({ isBuffering }) => setIsBuffering(isBuffering)}
           onPictureInPictureStatusChanged={(isActive) => setIsPiPActive(isActive.isActive)}
-          style={styles.video}
+          style={[styles.video, { opacity: isReady ? 1 : 0 }]}
           // Native Patches
           //@ts-ignore
           skipSilence={settings.skipSilence}
@@ -458,6 +501,9 @@ export default function PlayerScreen() {
             <MaterialIcons name="arrow-back" size={32} color="#fff" />
           </TouchableOpacity>
           <View style={styles.topRightControls}>
+            <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>
+              <MaterialIcons name={isFavorite ? "star" : "star-border"} size={28} color={isFavorite ? "#FFD700" : "#fff"} />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={togglePiP}>
               <MaterialIcons name="picture-in-picture-alt" size={28} color="#fff" />
             </TouchableOpacity>
@@ -506,7 +552,7 @@ export default function PlayerScreen() {
           <View style={styles.bottomRightControls}>
             <TouchableOpacity style={styles.smallIconButton} onPress={() => {
                 setResizeMode(r => {
-                  const current = r === 'auto' ? (isLandscape ? 'cover' : 'contain') : r;
+                  const current = r === 'auto' ? 'contain' : r;
                   return current === 'contain' ? 'cover' : current === 'cover' ? 'stretch' : 'auto';
                 });
                 showControlsUI();

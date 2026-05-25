@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, Modal, TextInput, FlatList, K
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as DocumentPicker from 'expo-document-picker';
+// import * as DocumentPicker from 'expo-document-picker'; // Requires native rebuild!
 import { useRouter } from 'expo-router';
 
 export interface Playlist {
@@ -62,25 +62,26 @@ export default function PlaylistScreen() {
 
   const handleSelectFile = async () => {
     setShowDropdown(false);
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', // Can restrict to specific extensions if needed, but M3U varies
-        copyToCacheDirectory: true,
-      });
+    alert('Select File requires a native rebuild to work. We will enable this later!');
+    // try {
+    //   const result = await DocumentPicker.getDocumentAsync({
+    //     type: '*/*', 
+    //     copyToCacheDirectory: true,
+    //   });
 
-      if (result.canceled === false && result.assets && result.assets.length > 0) {
-        const file = result.assets[0];
-        const newPlaylist: Playlist = {
-          id: Date.now().toString(),
-          name: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
-          url: file.uri,
-          isLocal: true,
-        };
-        savePlaylists([...playlists, newPlaylist]);
-      }
-    } catch (error) {
-      console.error('Error selecting file', error);
-    }
+    //   if (result.canceled === false && result.assets && result.assets.length > 0) {
+    //     const file = result.assets[0];
+    //     const newPlaylist: Playlist = {
+    //       id: Date.now().toString(),
+    //       name: file.name.replace(/\.[^/.]+$/, ""), 
+    //       url: file.uri,
+    //       isLocal: true,
+    //     };
+    //     savePlaylists([...playlists, newPlaylist]);
+    //   }
+    // } catch (error) {
+    //   console.error('Error selecting file', error);
+    // }
   };
 
   const handleCreateOrUpdate = () => {
@@ -120,9 +121,14 @@ export default function PlaylistScreen() {
   };
 
   const openChannelBrowser = (playlist: Playlist) => {
-    // Navigate to channel browser in Phase 2
-    // router.push({ pathname: '/channel-browser', params: { playlistUrl: playlist.url, playlistName: playlist.name, isLocal: playlist.isLocal ? 'true' : 'false' } });
-    console.log("Opening channel browser for:", playlist);
+    router.push({ 
+      pathname: '/channel-browser', 
+      params: { 
+        playlistUrl: playlist.url, 
+        playlistName: playlist.name, 
+        isLocal: playlist.isLocal ? 'true' : 'false' 
+      } 
+    });
   };
 
   const renderItem = ({ item }: { item: Playlist }) => (
@@ -233,19 +239,19 @@ export default function PlaylistScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F0F',
+    backgroundColor: '#121212',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 15,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 24,
-    fontWeight: '500',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   menuIconBtn: {
     padding: 5,
