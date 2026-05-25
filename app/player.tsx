@@ -37,9 +37,10 @@ export default function PlayerScreen() {
   const [selectedVideoTrack, setSelectedVideoTrack] = useState<number>(0); // 0 = auto
   
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
-  const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch'>('contain');
+  const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch' | 'auto'>('auto');
   const [isPiPActive, setIsPiPActive] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  const activeResizeMode = resizeMode === 'auto' ? (isLandscape ? 'cover' : 'contain') : resizeMode;
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
@@ -342,7 +343,7 @@ export default function PlayerScreen() {
           controls={false}
           paused={paused}
           rate={playbackRate}
-          resizeMode={resizeMode}
+          resizeMode={activeResizeMode}
           selectedAudioTrack={selectedAudioTrack !== undefined ? { type: SelectedTrackType.INDEX, value: selectedAudioTrack } : undefined}
           selectedTextTrack={selectedTextTrack === -1 ? { type: SelectedTrackType.DISABLED } : { type: SelectedTrackType.INDEX, value: selectedTextTrack }}
           selectedVideoTrack={selectedVideoTrack === 0 ? { type: SelectedVideoTrackType.AUTO } : { type: SelectedVideoTrackType.RESOLUTION, value: selectedVideoTrack }}
@@ -504,10 +505,14 @@ export default function PlayerScreen() {
           )}
           <View style={styles.bottomRightControls}>
             <TouchableOpacity style={styles.smallIconButton} onPress={() => {
-              setResizeMode(r => r === 'contain' ? 'cover' : r === 'cover' ? 'stretch' : 'contain'); showControlsUI();
-            }}>
-              <MaterialIcons name={resizeMode === 'contain' ? 'aspect-ratio' : resizeMode === 'cover' ? 'crop-free' : 'settings-overscan'} size={24} color="#fff" />
-            </TouchableOpacity>
+                setResizeMode(r => {
+                  const current = r === 'auto' ? (isLandscape ? 'cover' : 'contain') : r;
+                  return current === 'contain' ? 'cover' : current === 'cover' ? 'stretch' : 'auto';
+                });
+                showControlsUI();
+              }}>
+                <MaterialIcons name={activeResizeMode === 'contain' ? 'aspect-ratio' : activeResizeMode === 'cover' ? 'crop-free' : activeResizeMode === 'stretch' ? 'settings-overscan' : 'auto-fix-normal'} size={24} color="#fff" />
+              </TouchableOpacity>
             <TouchableOpacity style={styles.smallIconButton} onPress={() => {
               ScreenOrientation.lockAsync(isLandscape ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE);
               setIsLandscape(!isLandscape); showControlsUI();
