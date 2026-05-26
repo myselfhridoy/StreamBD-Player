@@ -1,5 +1,5 @@
-import Text from '../../components/Text';
-import { TVTouchable } from '../../components/TVTouchable';
+import Text from '../components/Text';
+import { TVTouchable } from '../components/TVTouchable';
 
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';;
@@ -7,7 +7,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // import * as DocumentPicker from 'expo-document-picker'; // Requires native rebuild!
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 
 export interface Playlist {
   id: string;
@@ -171,9 +171,15 @@ export default function PlaylistScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Playlist</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TVTouchable onPress={() => router.back()} style={{ marginRight: 15, padding: 5 }}>
+            <MaterialIcons name="arrow-back" size={26} color="#fff" />
+          </TVTouchable>
+          <Text style={styles.headerTitle}>Playlist</Text>
+        </View>
         <TVTouchable style={styles.menuIconBtn} onPress={() => setShowDropdown(true)}>
           <MaterialIcons name="more-vert" size={28} color="#fff" />
         </TVTouchable>

@@ -1,16 +1,24 @@
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable, StyleSheet } from 'react-native';
+import { Tabs } from 'expo-router';
+import { Platform, View, StyleSheet, useColorScheme, Dimensions } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BlurView } from 'expo-blur';
+import React from 'react';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from 'react-native';
+const { width } = Dimensions.get('window');
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof MaterialIcons>['name'];
-  color: string | any;
+  color: string;
+  focused: boolean;
 }) {
-  return <MaterialIcons size={28} style={{ marginBottom: -3 }} {...props} />;
+  return (
+    <View style={styles.iconContainer}>
+      <MaterialIcons size={26} style={{ marginBottom: -3 }} name={props.name} color={props.color} />
+      {props.focused && (
+        <View style={styles.activeDot} />
+      )}
+    </View>
+  );
 }
 
 export default function TabLayout() {
@@ -20,64 +28,95 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: isDark ? '#A78BFA' : '#4F46E5',
+        tabBarActiveTintColor: '#E50914', // Netflix Red
         tabBarInactiveTintColor: isDark ? '#6b6b80' : '#8a8aa3',
-        headerShown: false, // Hide header completely for a cleaner look
+        headerShown: false,
+        tabBarShowLabel: false, // Hide labels for a cleaner look
         tabBarStyle: { 
           position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
+          bottom: Platform.OS === 'ios' ? 25 : 15,
+          left: 20,
+          right: 20,
           elevation: 0,
-          borderTopWidth: 1,
-          borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-          backgroundColor: isDark ? 'rgba(15, 15, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-          height: Platform.OS === 'ios' ? 85 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-          paddingTop: 8,
+          borderTopWidth: 0,
+          borderWidth: 1,
+          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+          backgroundColor: isDark ? 'rgba(15, 15, 24, 0.75)' : 'rgba(255, 255, 255, 0.85)',
+          borderRadius: 40,
+          height: 65,
+          paddingBottom: 0,
+          paddingTop: 0,
+          overflow: 'hidden',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.3,
+          shadowRadius: 20,
         },
-        tabBarLabelStyle: {
-          fontFamily: 'Inter',
-        },
-        headerTitleStyle: {
-          fontFamily: 'Inter_Bold',
-        },
+        tabBarBackground: () => (
+          <BlurView 
+            tint={isDark ? 'dark' : 'light'} 
+            intensity={60} 
+            style={StyleSheet.absoluteFill} 
+          />
+        ),
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="categories"
         options={{
           title: 'Categories',
-          tabBarIcon: ({ color }) => <TabBarIcon name="dashboard" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="dashboard" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="media"
         options={{
           title: 'Media',
-          tabBarIcon: ({ color }) => <TabBarIcon name="movie" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="movie" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="playlist"
+        name="favorites"
         options={{
-          title: 'Playlist',
-          tabBarIcon: ({ color }) => <TabBarIcon name="playlist-play" color={color} />,
+          title: 'Favourites',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="favorite" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <TabBarIcon name="settings" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="settings" color={color} focused={focused} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    width: 50,
+  },
+  activeDot: {
+    position: 'absolute',
+    bottom: -8,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E50914',
+    shadowColor: '#E50914',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    elevation: 3,
+  }
+});

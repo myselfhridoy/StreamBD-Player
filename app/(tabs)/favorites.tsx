@@ -1,5 +1,5 @@
-import Text from '../components/Text';
-import { TVTouchable } from '../components/TVTouchable';
+import Text from '../../components/Text';
+import { TVTouchable } from '../../components/TVTouchable';
 
 import React, { useState, useEffect, memo, useCallback } from 'react';
 import { StyleSheet, View, FlatList, Image, Dimensions, TextInput } from 'react-native';
@@ -7,8 +7,8 @@ import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Channel } from '../utils/m3uParser';
-import { usePlaylist } from './context/PlaylistContext';
+import { Channel } from '../../utils/m3uParser';
+import { usePlaylist } from '../context/PlaylistContext';
 
 const { width } = Dimensions.get('window');
 const numColumns = Math.floor(width / 100);
