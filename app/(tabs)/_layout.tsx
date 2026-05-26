@@ -8,7 +8,7 @@ const { width } = Dimensions.get('window');
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof MaterialIcons>['name'];
-  color: string;
+  color: string | any;
   focused: boolean;
 }) {
   return (

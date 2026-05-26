@@ -1,28 +1,48 @@
 import Text from '../../components/Text';
 import { TVTouchable } from '../../components/TVTouchable';
 
-import React, { useState, useRef, useCallback } from 'react';
-import { StyleSheet, TextInput, ScrollView, View, Animated, Modal, BackHandler, Alert } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Animated, BackHandler, Modal, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SideDrawer from '../../components/SideDrawer';
 import { clearTokenCache } from '../../utils/tokenParser';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const OutlinedInput = ({ label, value, onChangeText, placeholder }: any) => {
+  const [isFocused, setIsFocused] = useState(false);
+
+  const handleClear = () => {
+    onChangeText('');
+  };
+
   return (
     <View style={styles.inputWrapper}>
       <View style={styles.floatingLabelWrapper}>
-        <Text style={styles.floatingLabel}>{label}</Text>
+        <Text style={[styles.floatingLabel, isFocused && { color: '#fff' }]}>{label}</Text>
       </View>
-      <TextInput
-        style={styles.outlinedInput}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder || `Enter ${label}`}
-        placeholderTextColor="#666"
-      />
+      <View style={styles.inputInner}>
+        <TextInput
+          style={[
+            styles.outlinedInput, 
+            { paddingRight: value ? 45 : 15 },
+            isFocused && { borderColor: '#A78BFA', backgroundColor: 'rgba(255,255,255,0.1)' }
+          ]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder || `Enter ${label}`}
+          placeholderTextColor="#666"
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+        />
+        {value ? (
+          <TVTouchable style={styles.rightActionBtn} onPress={handleClear}>
+            <MaterialIcons name="clear" size={20} color="#ff4444" />
+          </TVTouchable>
+        ) : null}
+      </View>
     </View>
   );
 };
@@ -35,14 +55,17 @@ export default function HomeScreen() {
   const [drmUrl, setDrmUrl] = useState('');
   const [userAgent, setUserAgent] = useState('Default');
   const [drmScheme, setDrmScheme] = useState('clearkey');
-  
+
   const [showToast, setShowToast] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
 
-  // Custom UA Modal State
+  // Modals State
+  const [showUAModal, setShowUAModal] = useState(false);
+  const [showDrmModal, setShowDrmModal] = useState(false);
   const [showCustomUAModal, setShowCustomUAModal] = useState(false);
   const [customUAInput, setCustomUAInput] = useState('');
   const [customUA, setCustomUA] = useState('');
+  
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const router = useRouter();
@@ -52,24 +75,12 @@ export default function HomeScreen() {
     useCallback(() => {
       const onBackPress = () => {
         Alert.alert('Exit App', 'Are you sure you want to exit the app?', [
-          {
-            text: 'Cancel',
-            onPress: () => null,
-            style: 'cancel',
-          },
-          {
-            text: 'Exit',
-            onPress: () => {
-              clearTokenCache();
-              BackHandler.exitApp();
-            },
-          },
+          { text: 'Cancel', onPress: () => null, style: 'cancel' },
+          { text: 'Exit', onPress: () => { clearTokenCache(); BackHandler.exitApp(); } },
         ]);
-        return true; // Prevent default back behavior
+        return true; 
       };
-
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
       return () => subscription.remove();
     }, [])
   );
@@ -84,26 +95,32 @@ export default function HomeScreen() {
       ]).start(() => setShowToast(false));
       return;
     }
-    
     router.push({
       pathname: '/player',
-      params: { 
-        mediaUrl, 
-        cookie, 
-        referer, 
-        origin, 
-        drmUrl, 
-        userAgent, 
-        drmScheme, 
-        fromHome: 'true'
-      }
+      params: { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, fromHome: 'true' }
     });
   };
 
+  const uaOptions = [
+    { label: 'Default', value: 'Default' },
+    { label: 'Chrome (Android)', value: 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36' },
+    { label: 'Chrome (PC)', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36' },
+    { label: 'Firefox (PC)', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0' },
+    { label: 'iPhone', value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Mobile/15E148 Safari/604.1' },
+    ...(customUA !== '' ? [{ label: 'Custom UA', value: customUA }] : []),
+    { label: 'Add Custom...', value: 'Custom' }
+  ];
+
+  const drmOptions = [
+    { label: 'Widevine', value: 'widevine' },
+    { label: 'PlayReady', value: 'playready' },
+    { label: 'ClearKey', value: 'clearkey' }
+  ];
+
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
+    <LinearGradient colors={['#1a0b2e', '#050505']} style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
       <SideDrawer visible={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
-      
+
       {/* Custom Header */}
       <View style={styles.header}>
         <TVTouchable onPress={() => setIsDrawerOpen(true)} style={styles.iconBtn}>
@@ -115,12 +132,14 @@ export default function HomeScreen() {
         </TVTouchable>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        overScrollMode="never"
+        bounces={false}
       >
-        <View style={styles.glassCard}>
+        <BlurView intensity={30} tint="dark" style={styles.glassCard}>
           <OutlinedInput label="Media Stream URL" value={mediaUrl} onChangeText={setMediaUrl} />
           <OutlinedInput label="Cookie Value" value={cookie} onChangeText={setCookie} />
           <OutlinedInput label="Referer Value" value={referer} onChangeText={setReferer} />
@@ -133,28 +152,14 @@ export default function HomeScreen() {
                 <View style={styles.floatingLabelWrapper}>
                   <Text style={styles.floatingLabel}>UserAgent</Text>
                 </View>
-                <View style={[styles.outlinedInput, { paddingHorizontal: 0, justifyContent: 'center' }]}>
-                  <Picker
-                    selectedValue={userAgent}
-                    onValueChange={(val) => {
-                      if (val === 'Custom') {
-                        setShowCustomUAModal(true);
-                      } else {
-                        setUserAgent(val);
-                      }
-                    }}
-                    style={{ color: '#fff', width: '100%', height: 50, backgroundColor: 'transparent' } as any}
-                    dropdownIconColor="#ccc"
-                  >
-                    <Picker.Item label="Default" value="Default" />
-                    <Picker.Item label="Chrome(Android)" value="Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36" />
-                    <Picker.Item label="Chrome(PC)" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36" />
-                    <Picker.Item label="Firefox(PC)" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0" />
-                    <Picker.Item label="iPhone" value="Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Mobile/15E148 Safari/604.1" />
-                    {customUA !== '' && <Picker.Item label="Custom UA" value={customUA} />}
-                    <Picker.Item label="Add Custom..." value="Custom" />
-                  </Picker>
-                </View>
+                <TVTouchable onPress={() => setShowUAModal(true)}>
+                  <View style={[styles.outlinedInput, { justifyContent: 'center' }]}>
+                    <Text style={styles.dropdownValueText} numberOfLines={1}>
+                      {uaOptions.find(o => o.value === userAgent)?.label || 'Default'}
+                    </Text>
+                    <MaterialIcons name="arrow-drop-down" size={24} color="#A78BFA" style={styles.dropdownIcon} />
+                  </View>
+                </TVTouchable>
               </View>
             </View>
 
@@ -163,23 +168,18 @@ export default function HomeScreen() {
                 <View style={styles.floatingLabelWrapper}>
                   <Text style={styles.floatingLabel}>DrmScheme</Text>
                 </View>
-                <View style={[styles.outlinedInput, { paddingHorizontal: 0, justifyContent: 'center' }]}>
-                  <Picker
-                    selectedValue={drmScheme}
-                    onValueChange={(val) => setDrmScheme(val)}
-                    style={{ color: '#fff', width: '100%', height: 50, backgroundColor: 'transparent' } as any}
-                    dropdownIconColor="#ccc"
-                  >
-                    <Picker.Item label="widevine" value="widevine" />
-                    <Picker.Item label="playready" value="playready" />
-                    <Picker.Item label="clearkey" value="clearkey" />
-                  </Picker>
-                </View>
+                <TVTouchable onPress={() => setShowDrmModal(true)}>
+                  <View style={[styles.outlinedInput, { justifyContent: 'center' }]}>
+                    <Text style={styles.dropdownValueText} numberOfLines={1}>
+                      {drmOptions.find(o => o.value === drmScheme)?.label || 'ClearKey'}
+                    </Text>
+                    <MaterialIcons name="arrow-drop-down" size={24} color="#A78BFA" style={styles.dropdownIcon} />
+                  </View>
+                </TVTouchable>
               </View>
             </View>
           </View>
-        </View>
-        <View style={{ height: 100 }} />
+        </BlurView>
       </ScrollView>
 
       {/* Custom Toast */}
@@ -191,62 +191,113 @@ export default function HomeScreen() {
       )}
 
       {/* FAB Play Button */}
-      <TVTouchable 
-        style={[styles.fab, { bottom: Math.max(insets.bottom + 80, 90) }]} 
-        activeOpacity={0.8} 
+      <TVTouchable
+        style={[styles.fab, { bottom: Math.max(insets.bottom + 80, 90) }]}
+        activeOpacity={0.8}
         onPress={handlePlay}
       >
         <MaterialIcons name="play-arrow" size={32} color="#fff" />
       </TVTouchable>
 
+      {/* UserAgent Selection Modal */}
+      <Modal visible={showUAModal} transparent animationType="fade" onRequestClose={() => setShowUAModal(false)}>
+        <TVTouchable style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowUAModal(false)}>
+          <View style={styles.premiumModalContent}>
+            <Text style={styles.premiumModalTitle}>Select UserAgent</Text>
+            <ScrollView bounces={false} overScrollMode="never" style={{ maxHeight: 300 }}>
+              {uaOptions.map((opt, idx) => (
+                <TVTouchable 
+                  key={idx} 
+                  style={[styles.selectOption, userAgent === opt.value && styles.selectOptionActive]}
+                  onPress={() => {
+                    if (opt.value === 'Custom') {
+                      setShowUAModal(false);
+                      setTimeout(() => setShowCustomUAModal(true), 100);
+                    } else {
+                      setUserAgent(opt.value);
+                      setShowUAModal(false);
+                    }
+                  }}
+                >
+                  <Text style={[styles.selectOptionText, userAgent === opt.value && { color: '#A78BFA' }]} numberOfLines={1}>
+                    {opt.label}
+                  </Text>
+                  {userAgent === opt.value && <MaterialIcons name="check-circle" size={20} color="#A78BFA" />}
+                </TVTouchable>
+              ))}
+            </ScrollView>
+          </View>
+        </TVTouchable>
+      </Modal>
+
+      {/* DRM Schema Selection Modal */}
+      <Modal visible={showDrmModal} transparent animationType="fade" onRequestClose={() => setShowDrmModal(false)}>
+        <TVTouchable style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDrmModal(false)}>
+          <View style={styles.premiumModalContent}>
+            <Text style={styles.premiumModalTitle}>Select DRM Scheme</Text>
+            <ScrollView bounces={false} overScrollMode="never">
+              {drmOptions.map((opt, idx) => (
+                <TVTouchable 
+                  key={idx} 
+                  style={[styles.selectOption, drmScheme === opt.value && styles.selectOptionActive]}
+                  onPress={() => {
+                    setDrmScheme(opt.value);
+                    setShowDrmModal(false);
+                  }}
+                >
+                  <Text style={[styles.selectOptionText, drmScheme === opt.value && { color: '#A78BFA' }]} numberOfLines={1}>
+                    {opt.label}
+                  </Text>
+                  {drmScheme === opt.value && <MaterialIcons name="check-circle" size={20} color="#A78BFA" />}
+                </TVTouchable>
+              ))}
+            </ScrollView>
+          </View>
+        </TVTouchable>
+      </Modal>
+
       {/* Custom UA Modal */}
       <Modal visible={showCustomUAModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Custom User Agent</Text>
-            <TextInput 
-              style={styles.modalInput} 
-              value={customUAInput} 
-              onChangeText={setCustomUAInput} 
-              placeholder="Mozilla/5.0..." 
-              placeholderTextColor="#666" 
+          <View style={styles.premiumModalContent}>
+            <Text style={styles.premiumModalTitle}>Custom User Agent</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={customUAInput}
+              onChangeText={setCustomUAInput}
+              placeholder="Mozilla/5.0..."
+              placeholderTextColor="#666"
             />
             <View style={styles.modalActions}>
               <TVTouchable onPress={() => setShowCustomUAModal(false)}>
                 <Text style={styles.modalCancel}>Cancel</Text>
               </TVTouchable>
-              <TVTouchable onPress={() => { 
+              <TVTouchable onPress={() => {
                 if (customUAInput.trim()) {
-                  setCustomUA(customUAInput.trim()); 
-                  setUserAgent(customUAInput.trim()); 
+                  setCustomUA(customUAInput.trim());
+                  setUserAgent(customUAInput.trim());
                 }
-                setShowCustomUAModal(false); 
+                setShowCustomUAModal(false);
               }}>
-                <Text style={styles.modalOk}>OK</Text>
+                <Text style={styles.modalOk}>Save</Text>
               </TVTouchable>
             </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0d0d14',
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 15,
     paddingBottom: 15,
   },
-  iconBtn: {
-    padding: 8,
-    borderRadius: 20,
-  },
+  iconBtn: { padding: 8, borderRadius: 20 },
   headerTitle: {
     flex: 1,
     color: '#fff',
@@ -257,51 +308,65 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 15,
     paddingTop: 10,
-    paddingBottom: 100,
+    paddingBottom: 20,
+    alignItems: 'center', // Centers the form on wide screens
   },
   glassCard: {
-    backgroundColor: '#1a1a24',
-    borderRadius: 16,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    marginBottom: 20,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 0,
+    marginBottom: 15,
+    width: '100%',
+    maxWidth: 600, // Keeps it looking good on TV
   },
   inputWrapper: {
-    marginBottom: 20,
+    marginBottom: 12,
     position: 'relative',
   },
-  floatingLabelWrapper: {
+  inputInner: {
+    justifyContent: 'center',
+  },
+  rightActionBtn: {
     position: 'absolute',
-    left: 10,
-    top: -8,
-    backgroundColor: '#1a1a24',
+    right: 12,
+    padding: 4,
+    zIndex: 5,
+  },
+  floatingLabelWrapper: {
+    marginBottom: 6,
     paddingHorizontal: 4,
-    zIndex: 2,
   },
   floatingLabel: {
-    color: '#8a8aa3',
+    color: '#A78BFA',
     fontSize: 12,
-    fontFamily: 'Inter_Medium',
+    fontFamily: 'Inter_SemiBold',
+    letterSpacing: 0.5,
   },
   outlinedInput: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Inter_Medium',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    height: 52,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    height: 46,
   },
-  row: {
-    flexDirection: 'row',
+  dropdownValueText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: 'Inter_Medium',
+    paddingRight: 20,
   },
-  flex1: {
-    flex: 1,
+  dropdownIcon: {
+    position: 'absolute',
+    right: 10,
   },
+  row: { flexDirection: 'row' },
+  flex1: { flex: 1 },
   toast: {
     position: 'absolute',
     bottom: 100,
@@ -318,69 +383,91 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  toastText: {
-    color: '#fff',
-    fontSize: 16,
-    flex: 1,
-  },
+  toastText: { color: '#fff', fontSize: 16, flex: 1 },
   fab: {
     position: 'absolute',
     right: 20,
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#E50914',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: '#E50914',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#1e1e1e',
-    width: '85%',
-    borderRadius: 12,
     padding: 20,
-    elevation: 5,
   },
-  modalTitle: {
+  premiumModalContent: {
+    backgroundColor: '#161622',
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    elevation: 10,
+  },
+  premiumModalTitle: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Inter_Bold',
     marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  selectOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  selectOptionActive: {
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+  },
+  selectOptionText: {
+    color: '#E0E0E0',
+    fontSize: 15,
+    fontFamily: 'Inter_Medium',
+    flex: 1,
+    marginRight: 10,
   },
   modalInput: {
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
     color: '#fff',
     paddingHorizontal: 15,
     height: 50,
     marginBottom: 20,
-    backgroundColor: '#121212',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    fontFamily: 'Inter_Medium',
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
+    marginTop: 10,
   },
   modalCancel: {
-    color: '#aaa',
-    fontSize: 16,
+    color: '#8a8aa3',
+    fontSize: 15,
+    fontFamily: 'Inter_SemiBold',
     marginRight: 20,
-    fontWeight: '600',
   },
   modalOk: {
-    color: '#3b82f6',
+    color: '#A78BFA',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Inter_Bold',
   },
 });
