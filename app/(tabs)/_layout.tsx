@@ -58,10 +58,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="samples"
+        name="media"
         options={{
-          title: 'Samples',
-          tabBarIcon: ({ color }) => <TabBarIcon name="ondemand-video" color={color} />,
+          title: 'Media',
+          tabBarIcon: ({ color }) => <TabBarIcon name="movie" color={color} />,
         }}
       />
       <Tabs.Screen

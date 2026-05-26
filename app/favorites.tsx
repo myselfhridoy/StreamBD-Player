@@ -78,6 +78,9 @@ export default function FavoritesScreen() {
 
   // Auto-categorization logic
   const getCategory = (channel: any) => {
+    if (channel.isVod || channel.vodId) {
+      return 'VOD';
+    }
     if (channel.isLiveEvent) {
       return 'LIVE EVENTS';
     }
@@ -94,6 +97,18 @@ export default function FavoritesScreen() {
   };
 
   const handleChannelPress = useCallback((channel: Channel, index: number) => {
+    // VOD items navigate to details screen
+    if ((channel as any).isVod && (channel as any).vodId) {
+      router.push({
+        pathname: '/details/[id]',
+        params: {
+          id: (channel as any).vodId,
+          type: (channel as any).vodType || 'movie',
+        }
+      });
+      return;
+    }
+
     setPlaylist(getFilteredFavorites(), index);
     router.push({
       pathname: '/player',

@@ -17,7 +17,7 @@ import { resolveCustomTokenUrl } from '../utils/tokenParser';
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup, fromHome, isLiveEvent, tokenUrl, tokenMatch, tokenReplace, tokenId } = params;
+  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup, fromHome, isLiveEvent, tokenUrl, tokenMatch, tokenReplace, tokenId, isVod, vodSourceIndex } = params;
 
   const { settings } = useSettings();
   const { nextChannel, prevChannel } = usePlaylist();
@@ -50,7 +50,9 @@ export default function PlayerScreen() {
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
-  const [activeTab, setActiveTab] = useState<'audio' | 'subs' | 'quality' | 'speed'>('audio');
+  const [activeTab, setActiveTab] = useState<'audio' | 'subs' | 'quality' | 'speed' | 'sources'>('audio');
+  const [vodSources, setVodSources] = useState<any[]>([]);
+  const [currentVodIndex, setCurrentVodIndex] = useState<number>(0);
   
   const [playerError, setPlayerError] = useState<{title: string, message: string} | null>(null);
 
@@ -287,7 +289,15 @@ export default function PlayerScreen() {
     setIsBuffering(false);
 
     // Resume logic
-    if (settings.resumePlay && mediaUrl) {
+    if (String(isVod) === 'true') {
+      try {
+        const savedTime = await AsyncStorage.getItem('resume_vod');
+        if (savedTime && parseFloat(savedTime) > 0) {
+          videoRef.current?.seek(parseFloat(savedTime));
+          AsyncStorage.removeItem('resume_vod');
+        }
+      } catch(e) {}
+    } else if (settings.resumePlay && mediaUrl) {
       try {
         const savedTime = await AsyncStorage.getItem(`resume_${mediaUrl}`);
         if (savedTime && parseFloat(savedTime) > 0) {
@@ -461,6 +471,27 @@ export default function PlayerScreen() {
   const [resolvedHeaders, setResolvedHeaders] = useState<Record<string, string> | undefined>(undefined);
   const [resolvedDrm, setResolvedDrm] = useState<any>(undefined);
 
+  const switchVodSource = async (index: number) => {
+    if (!vodSources[index]) return;
+    setIsBuffering(true);
+    setIsReady(false);
+    setPlayerError(null);
+    setCurrentVodIndex(index);
+    if (currentTime > 0) {
+      await AsyncStorage.setItem('resume_vod', currentTime.toString());
+    }
+    const src = vodSources[index];
+    router.setParams({
+      mediaUrl: src.url,
+      vodSourceIndex: index.toString(),
+      referer: src.headers?.['Referer'] || src.headers?.['referer'] || '',
+      origin: src.headers?.['Origin'] || src.headers?.['origin'] || '',
+      userAgent: src.headers?.['User-Agent'] || src.headers?.['user-agent'] || 'Default',
+      cookie: src.headers?.['Cookie'] || src.headers?.['cookie'] || '',
+    });
+    showOverlayFeedback(`Switched to ${src.quality} (${src.provider})`);
+  };
+
   const performUrlResolution = async () => {
       if (!finalMediaUrl) {
         setResolvedMediaUrl(null);
@@ -545,6 +576,16 @@ export default function PlayerScreen() {
   };
 
   useEffect(() => {
+    if (String(isVod) === 'true') {
+      AsyncStorage.getItem('@current_vod_sources').then(data => {
+        if (data) {
+           const parsed = JSON.parse(data);
+           setVodSources(parsed);
+           const idx = parseInt((vodSourceIndex as string) || '0');
+           setCurrentVodIndex(idx);
+        }
+      });
+    }
     performUrlResolution();
   }, [finalMediaUrl]);
 
@@ -617,6 +658,12 @@ export default function PlayerScreen() {
             } else if (errStr.includes('ERROR_CODE_IO_NETWORK_CONNECTION_FAILED')) {
               title = 'Network Error';
               message = 'Failed to connect to the media server. Please check your internet connection.';
+            } else if (stack.includes('NO_UNSUPPORTED_TYPE') && stack.includes('audio/')) {
+              title = 'Unsupported Audio Format';
+              message = 'Your device does not support the audio format of this stream (e.g. Dolby EAC3). Try selecting a different source or quality from Settings > Sources.';
+            } else if (errStr.includes('ERROR_CODE_DECODER_INIT_FAILED') || stack.includes('DecoderInitializationException')) {
+              title = 'Decoder Failed';
+              message = 'Your device hardware does not support the format of this stream. Try a different source.';
             }
 
             setPlayerError({ title, message });
@@ -687,10 +734,10 @@ export default function PlayerScreen() {
           <View style={styles.settingsPanel}>
             <View style={styles.settingsSidebar}>
               <Text style={styles.settingsHeader}>Settings</Text>
-              {(['audio', 'subs', 'quality', 'speed'] as const).map((tab, idx) => (
+              {(String(isVod) === 'true' ? ['sources', 'audio', 'subs', 'quality', 'speed'] as const : ['audio', 'subs', 'quality', 'speed'] as const).map((tab, idx) => (
                 <TouchableOpacity key={tab} hasTVPreferredFocus={idx === 0} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
                   <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                    {tab === 'audio' ? 'Audio' : tab === 'subs' ? 'Subtitles' : tab === 'quality' ? 'Quality' : 'Speed'}
+                    {tab === 'audio' ? 'Audio' : tab === 'subs' ? 'Subtitles' : tab === 'quality' ? 'Quality' : tab === 'sources' ? 'Sources' : 'Speed'}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -743,6 +790,20 @@ export default function PlayerScreen() {
                       <Text style={styles.trackText}>{speed}x {speed === 1.0 ? '(Normal)' : ''}</Text>
                     </TouchableOpacity>
                   ))}
+                </>
+              )}
+              {activeTab === 'sources' && (
+                <>
+                  {vodSources.length > 0 ? (
+                    vodSources.map((src: any, index: number) => (
+                      <TouchableOpacity key={index} style={styles.trackBtn} onPress={() => { switchVodSource(index); setShowSettings(false); }}>
+                        <MaterialIcons name={currentVodIndex === index ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
+                        <Text style={styles.trackText}>{src.quality} - {src.provider}</Text>
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <Text style={styles.emptyText}>No sources loaded</Text>
+                  )}
                 </>
               )}
             </ScrollView>
