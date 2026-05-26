@@ -11,7 +11,7 @@ import { clearTokenCache } from '../../utils/tokenParser';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const OutlinedInput = ({ label, value, onChangeText, placeholder }: any) => {
+const OutlinedInput = ({ label, value, onChangeText, placeholder, hasTVPreferredFocus }: any) => {
   const [isFocused, setIsFocused] = useState(false);
 
   const handleClear = () => {
@@ -34,6 +34,8 @@ const OutlinedInput = ({ label, value, onChangeText, placeholder }: any) => {
           onChangeText={onChangeText}
           placeholder={placeholder || `Enter ${label}`}
           placeholderTextColor="#666"
+          focusable={true}
+          hasTVPreferredFocus={hasTVPreferredFocus}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
@@ -140,7 +142,7 @@ export default function HomeScreen() {
         bounces={false}
       >
         <BlurView intensity={30} tint="dark" style={styles.glassCard}>
-          <OutlinedInput label="Media Stream URL" value={mediaUrl} onChangeText={setMediaUrl} />
+          <OutlinedInput label="Media Stream URL" value={mediaUrl} onChangeText={setMediaUrl} hasTVPreferredFocus={true} />
           <OutlinedInput label="Cookie Value" value={cookie} onChangeText={setCookie} />
           <OutlinedInput label="Referer Value" value={referer} onChangeText={setReferer} />
           <OutlinedInput label="Origin Value" value={origin} onChangeText={setOrigin} />

@@ -14,6 +14,7 @@ export const TVTouchable = forwardRef<any, TVTouchableProps>(({ style, focusedSt
     <Pressable
       ref={ref}
       hasTVPreferredFocus={hasTVPreferredFocus}
+      focusable={true}
       {...props}
       style={(state: any) => [
         typeof style === 'function' ? style(state) : style,
