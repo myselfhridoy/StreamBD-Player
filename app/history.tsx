@@ -1,6 +1,8 @@
 import Text from '../components/Text';
+import { TVTouchable } from '../components/TVTouchable';
+
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, FlatList, Alert } from 'react-native';;
+import { StyleSheet, View, FlatList, Alert } from 'react-native';;
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -64,14 +66,14 @@ export default function HistoryScreen() {
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.historyCard}>
-      <TouchableOpacity style={styles.historyUrlBtn} onPress={() => playItem(item)}>
+      <TVTouchable style={styles.historyUrlBtn} onPress={() => playItem(item)}>
         <Text style={styles.historyText} numberOfLines={2} ellipsizeMode="tail">
           {item.url}
         </Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteItem(item.url)}>
+      </TVTouchable>
+      <TVTouchable style={styles.deleteBtn} onPress={() => deleteItem(item.url)}>
         <MaterialIcons name="delete" size={24} color="#ccc" />
-      </TouchableOpacity>
+      </TVTouchable>
     </View>
   );
 
@@ -79,9 +81,9 @@ export default function HistoryScreen() {
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TVTouchable style={styles.backBtn} onPress={() => router.back()}>
           <MaterialIcons name="arrow-back" size={28} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
         <Text style={styles.headerTitle}>History</Text>
       </View>
 

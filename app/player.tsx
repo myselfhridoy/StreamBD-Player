@@ -1,4 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { TVTouchable } from '../components/TVTouchable';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
 import * as Brightness from 'expo-brightness';
@@ -6,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Video, { DRMType, OnLoadData, ReactVideoSource, SelectedTrackType, SelectedVideoTrackType, VideoRef } from 'react-native-video';
 import { VolumeManager } from 'react-native-volume-manager';
 import Text from '../components/Text';
@@ -552,19 +554,27 @@ export default function PlayerScreen() {
         }
       }
 
-      // 2. Pre-fetch the URL to resolve any HTTP 301/302 redirects
+      // Pre-fetch the URL to resolve any HTTP 301/302 redirects
       // This is crucial because ExoPlayer blocks HTTPS -> HTTP redirects by default
-      const res = await fetch(currentUrl, {
-        method: 'HEAD', // Try HEAD first to avoid downloading body
-        headers: currentHeaders
-      });
+      // Optimization: Only do this for URLs that don't look like direct streams
+      const isDirectStream = /\.(m3u8|mp4|mkv|ts|flv|webm)(\?|$)/i.test(currentUrl);
+      
+      let targetUrl = currentUrl;
+      if (!isDirectStream || currentUrl.includes('.php')) {
+        try {
+          const res = await fetch(currentUrl, {
+            method: 'HEAD',
+            headers: currentHeaders
+          });
+          targetUrl = res.url || currentUrl;
 
-      let targetUrl = res.url || currentUrl;
-
-      // If HEAD fails (some servers block it or return 405/403), try GET
-      if (!res.ok) {
-        const getRes = await fetch(currentUrl, { method: 'GET', headers: currentHeaders });
-        targetUrl = getRes.url || currentUrl;
+          if (!res.ok) {
+            const getRes = await fetch(currentUrl, { method: 'GET', headers: currentHeaders });
+            targetUrl = getRes.url || currentUrl;
+          }
+        } catch (e) {
+          console.log('Redirect resolution failed', e);
+        }
       }
 
       setResolvedMediaUrl(targetUrl);
@@ -703,17 +713,17 @@ export default function PlayerScreen() {
             <Text style={styles.errorTitle}>{playerError.title}</Text>
             <Text style={styles.errorMessage}>{playerError.message}</Text>
             <View style={styles.errorButtons}>
-              <TouchableOpacity style={styles.errorBtn} onPress={() => router.back()}>
+              <TVTouchable style={styles.errorBtn} onPress={() => router.back()}>
                 <MaterialIcons name="arrow-back" size={20} color="#fff" />
                 <Text style={styles.errorBtnText}>Go Back</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.errorBtn, styles.errorBtnPrimary]} onPress={() => {
+              </TVTouchable>
+              <TVTouchable style={[styles.errorBtn, styles.errorBtnPrimary]} onPress={() => {
                 setResolvedMediaUrl(null);
                 performUrlResolution();
               }}>
                 <MaterialIcons name="refresh" size={20} color="#fff" />
                 <Text style={styles.errorBtnText}>Retry</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             </View>
           </View>
         </View>
@@ -736,11 +746,11 @@ export default function PlayerScreen() {
             <View style={styles.settingsSidebar}>
               <Text style={styles.settingsHeader}>Settings</Text>
               {(String(isVod) === 'true' ? ['sources', 'audio', 'subs', 'quality', 'speed'] as const : ['audio', 'subs', 'quality', 'speed'] as const).map((tab, idx) => (
-                <TouchableOpacity key={tab} hasTVPreferredFocus={idx === 0} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
+                <TVTouchable key={tab} hasTVPreferredFocus={idx === 0} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
                   <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
                     {tab === 'audio' ? 'Audio' : tab === 'subs' ? 'Subtitles' : tab === 'quality' ? 'Quality' : tab === 'sources' ? 'Sources' : 'Speed'}
                   </Text>
-                </TouchableOpacity>
+                </TVTouchable>
               ))}
             </View>
             <ScrollView style={styles.settingsContent} showsVerticalScrollIndicator={false}>
@@ -748,48 +758,48 @@ export default function PlayerScreen() {
                 <>
                   {audioTracks.length === 0 && <Text style={styles.noTracksText}>No alternative audio tracks.</Text>}
                   {audioTracks.map((track, i) => (
-                    <TouchableOpacity key={i} style={styles.trackBtn} onPress={() => setSelectedAudioTrack(track.index)}>
+                    <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedAudioTrack(track.index)}>
                       <MaterialIcons name={selectedAudioTrack === track.index || (selectedAudioTrack === undefined && i === 0) ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
                       <Text style={styles.trackText}>{track.language || track.title || `Track ${i + 1}`}</Text>
-                    </TouchableOpacity>
+                    </TVTouchable>
                   ))}
                 </>
               )}
               {activeTab === 'subs' && (
                 <>
-                  <TouchableOpacity style={styles.trackBtn} onPress={() => setSelectedTextTrack(-1)}>
+                  <TVTouchable style={styles.trackBtn} onPress={() => setSelectedTextTrack(-1)}>
                     <MaterialIcons name={selectedTextTrack === -1 ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
                     <Text style={styles.trackText}>Off</Text>
-                  </TouchableOpacity>
+                  </TVTouchable>
                   {textTracks.map((track, i) => (
-                    <TouchableOpacity key={i} style={styles.trackBtn} onPress={() => setSelectedTextTrack(track.index)}>
+                    <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedTextTrack(track.index)}>
                       <MaterialIcons name={selectedTextTrack === track.index ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
                       <Text style={styles.trackText}>{track.language || track.title || `Subtitle ${i + 1}`}</Text>
-                    </TouchableOpacity>
+                    </TVTouchable>
                   ))}
                 </>
               )}
               {activeTab === 'quality' && (
                 <>
-                  <TouchableOpacity style={styles.trackBtn} onPress={() => setSelectedVideoTrack(0)}>
+                  <TVTouchable style={styles.trackBtn} onPress={() => setSelectedVideoTrack(0)}>
                     <MaterialIcons name={selectedVideoTrack === 0 ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
                     <Text style={styles.trackText}>Auto</Text>
-                  </TouchableOpacity>
+                  </TVTouchable>
                   {videoTracks.map((track, i) => (
-                    <TouchableOpacity key={i} style={styles.trackBtn} onPress={() => setSelectedVideoTrack(track.height)}>
+                    <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedVideoTrack(track.height)}>
                       <MaterialIcons name={selectedVideoTrack === track.height ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
                       <Text style={styles.trackText}>{track.height}p</Text>
-                    </TouchableOpacity>
+                    </TVTouchable>
                   ))}
                 </>
               )}
               {activeTab === 'speed' && (
                 <>
                   {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(speed => (
-                    <TouchableOpacity key={speed} style={styles.trackBtn} onPress={() => setPlaybackRate(speed)}>
+                    <TVTouchable key={speed} style={styles.trackBtn} onPress={() => setPlaybackRate(speed)}>
                       <MaterialIcons name={playbackRate === speed ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
                       <Text style={styles.trackText}>{speed}x {speed === 1.0 ? '(Normal)' : ''}</Text>
-                    </TouchableOpacity>
+                    </TVTouchable>
                   ))}
                 </>
               )}
@@ -797,10 +807,10 @@ export default function PlayerScreen() {
                 <>
                   {vodSources.length > 0 ? (
                     vodSources.map((src: any, index: number) => (
-                      <TouchableOpacity key={index} style={styles.trackBtn} onPress={() => { switchVodSource(index); setShowSettings(false); }}>
+                      <TVTouchable key={index} style={styles.trackBtn} onPress={() => { switchVodSource(index); setShowSettings(false); }}>
                         <MaterialIcons name={currentVodIndex === index ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
                         <Text style={styles.trackText}>{src.quality} - {src.provider}</Text>
-                      </TouchableOpacity>
+                      </TVTouchable>
                     ))
                   ) : (
                     <Text style={styles.emptyText}>No sources loaded</Text>
@@ -808,9 +818,9 @@ export default function PlayerScreen() {
                 </>
               )}
             </ScrollView>
-            <TouchableOpacity style={styles.closeSettingsBtn} onPress={() => { setShowSettings(false); startControlsTimeout(); }}>
+            <TVTouchable style={styles.closeSettingsBtn} onPress={() => { setShowSettings(false); startControlsTimeout(); }}>
               <MaterialIcons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
+            </TVTouchable>
           </View>
         </View>
       )}
@@ -819,37 +829,37 @@ export default function PlayerScreen() {
       {!playerError && (
         <Animated.View style={[styles.controlsOverlay, { opacity: fadeAnim }]} pointerEvents={showControls && !showSettings ? 'box-none' : 'none'}>
           <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent']} style={styles.topGradient}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
+            <TVTouchable style={styles.iconButton} onPress={() => router.back()}>
               <MaterialIcons name="arrow-back" size={32} color="#fff" />
-            </TouchableOpacity>
+            </TVTouchable>
             <View style={styles.topRightControls}>
-              <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>
+              <TVTouchable style={styles.iconButton} onPress={toggleFavorite}>
                 <MaterialIcons name={isFavorite ? "star" : "star-border"} size={28} color={isFavorite ? "#FFD700" : "#fff"} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton} onPress={togglePiP}>
+              </TVTouchable>
+              <TVTouchable style={styles.iconButton} onPress={togglePiP}>
                 <MaterialIcons name="picture-in-picture-alt" size={28} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton} onPress={() => { setShowSettings(true); showControlsUI(); }}>
+              </TVTouchable>
+              <TVTouchable style={styles.iconButton} onPress={() => { setShowSettings(true); showControlsUI(); }}>
                 <MaterialIcons name="settings" size={28} color="#fff" />
-              </TouchableOpacity>
+              </TVTouchable>
             </View>
           </LinearGradient>
 
           <View style={styles.centerControls} pointerEvents="box-none">
             {!isLive && (
-              <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(Math.max(currentTime - settings.seekDuration, 0)); showControlsUI(); }}>
+              <TVTouchable style={styles.centerBtn} onPress={() => { videoRef.current?.seek(Math.max(currentTime - settings.seekDuration, 0)); showControlsUI(); }}>
                 <MaterialIcons name="replay-10" size={48} color="#fff" />
                 <Text style={styles.seekBtnText}>-{settings.seekDuration}s</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             )}
-            <TouchableOpacity hasTVPreferredFocus={true} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
+            <TVTouchable hasTVPreferredFocus={true} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
               <MaterialIcons name={paused ? "play-arrow" : "pause"} size={64} color="#fff" />
-            </TouchableOpacity>
+            </TVTouchable>
             {!isLive && (
-              <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(currentTime + settings.seekDuration); showControlsUI(); }}>
+              <TVTouchable style={styles.centerBtn} onPress={() => { videoRef.current?.seek(currentTime + settings.seekDuration); showControlsUI(); }}>
                 <MaterialIcons name="forward-10" size={48} color="#fff" />
                 <Text style={styles.seekBtnText}>+{settings.seekDuration}s</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             )}
           </View>
 
@@ -872,7 +882,7 @@ export default function PlayerScreen() {
               </View>
             )}
             <View style={styles.bottomRightControls}>
-              <TouchableOpacity style={styles.smallIconButton} onPress={() => {
+              <TVTouchable style={styles.smallIconButton} onPress={() => {
                 setResizeMode(r => {
                   return r === 'auto' ? 'contain' :
                     r === 'contain' ? 'cover' :
@@ -881,13 +891,13 @@ export default function PlayerScreen() {
                 showControlsUI();
               }}>
                 <MaterialIcons name={activeResizeMode === 'contain' ? 'aspect-ratio' : activeResizeMode === 'cover' ? 'crop-free' : activeResizeMode === 'stretch' ? 'settings-overscan' : 'auto-fix-normal'} size={24} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.smallIconButton} onPress={() => {
+              </TVTouchable>
+              <TVTouchable style={styles.smallIconButton} onPress={() => {
                 ScreenOrientation.lockAsync(isLandscape ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE);
                 setIsLandscape(!isLandscape); showControlsUI();
               }}>
                 <MaterialIcons name={isLandscape ? 'screen-lock-portrait' : 'screen-rotation'} size={24} color="#fff" />
-              </TouchableOpacity>
+              </TVTouchable>
             </View>
           </LinearGradient>
         </Animated.View>

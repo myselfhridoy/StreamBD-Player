@@ -1,6 +1,8 @@
 import Text from '../../components/Text';
+import { TVTouchable } from '../../components/TVTouchable';
+
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';;
+import { StyleSheet, View, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';;
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -146,7 +148,7 @@ export default function PlaylistScreen() {
   };
 
   const renderItem = ({ item }: { item: Playlist }) => (
-    <TouchableOpacity 
+    <TVTouchable 
       style={styles.playlistItem}
       onPress={() => openChannelBrowser(item)}
     >
@@ -157,14 +159,14 @@ export default function PlaylistScreen() {
         </Text>
       </View>
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => handleEdit(item)}>
+        <TVTouchable style={styles.iconButton} onPress={() => handleEdit(item)}>
           <MaterialIcons name="edit" size={22} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconButton} onPress={() => handleDelete(item.id, item.name)}>
+        </TVTouchable>
+        <TVTouchable style={styles.iconButton} onPress={() => handleDelete(item.id, item.name)}>
           <MaterialIcons name="delete" size={22} color="#ff4444" />
-        </TouchableOpacity>
+        </TVTouchable>
       </View>
-    </TouchableOpacity>
+    </TVTouchable>
   );
 
   return (
@@ -172,9 +174,9 @@ export default function PlaylistScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Playlist</Text>
-        <TouchableOpacity style={styles.menuIconBtn} onPress={() => setShowDropdown(true)}>
+        <TVTouchable style={styles.menuIconBtn} onPress={() => setShowDropdown(true)}>
           <MaterialIcons name="more-vert" size={28} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
       </View>
 
       {/* Main Content */}
@@ -198,16 +200,16 @@ export default function PlaylistScreen() {
         animationType="fade"
         onRequestClose={() => setShowDropdown(false)}
       >
-        <TouchableOpacity style={styles.dropdownOverlay} onPress={() => setShowDropdown(false)} activeOpacity={1}>
+        <TVTouchable style={styles.dropdownOverlay} onPress={() => setShowDropdown(false)} activeOpacity={1}>
           <View style={[styles.dropdownMenu, { top: Math.max(insets.top, 20) + 50 }]}>
-            <TouchableOpacity style={styles.dropdownItem} onPress={handleAddUrl}>
+            <TVTouchable style={styles.dropdownItem} onPress={handleAddUrl}>
               <Text style={styles.dropdownItemText}>Add URL</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.dropdownItem} onPress={handleSelectFile}>
+            </TVTouchable>
+            <TVTouchable style={styles.dropdownItem} onPress={handleSelectFile}>
               <Text style={styles.dropdownItemText}>Select File</Text>
-            </TouchableOpacity>
+            </TVTouchable>
           </View>
-        </TouchableOpacity>
+        </TVTouchable>
       </Modal>
 
       {/* Add/Edit Modal */}
@@ -250,12 +252,12 @@ export default function PlaylistScreen() {
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalActionBtn} onPress={() => setShowAddModal(false)}>
+              <TVTouchable style={styles.modalActionBtn} onPress={() => setShowAddModal(false)}>
                 <Text style={styles.modalActionText}>CANCEL</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalActionBtn} onPress={handleCreateOrUpdate}>
+              </TVTouchable>
+              <TVTouchable style={styles.modalActionBtn} onPress={handleCreateOrUpdate}>
                 <Text style={styles.modalActionText}>{editingPlaylist ? "UPDATE" : "CREATE"}</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             </View>
           </View>
         </KeyboardAvoidingView>

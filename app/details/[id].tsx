@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, ActivityIndicator, Pressable, Dimensions, TouchableOpacity } from 'react-native';
+import { TVTouchable } from '../../components/TVTouchable';
+
+import { View, StyleSheet, ScrollView, Image, ActivityIndicator, Pressable, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '../../components/Text';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -236,7 +238,7 @@ export default function DetailsScreen() {
               <Text style={styles.sectionTitle}>Seasons</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
                 {seasons.map((s: any) => (
-                  <TouchableOpacity
+                  <TVTouchable
                     key={s.season_number}
                     style={[styles.seasonChip, selectedSeason === s.season_number && styles.seasonChipActive]}
                     onPress={() => fetchEpisodes(s.season_number)}
@@ -244,7 +246,7 @@ export default function DetailsScreen() {
                     <Text style={[styles.seasonChipText, selectedSeason === s.season_number && styles.seasonChipTextActive]}>
                       Season {s.season_number}
                     </Text>
-                  </TouchableOpacity>
+                  </TVTouchable>
                 ))}
               </ScrollView>
 
@@ -252,7 +254,7 @@ export default function DetailsScreen() {
                 <ActivityIndicator color={Colors.light.tint} style={{ marginVertical: 20 }} />
               ) : (
                 episodes.map((ep: any) => (
-                  <TouchableOpacity
+                  <TVTouchable
                     key={ep.episode_number}
                     style={styles.episodeCard}
                     onPress={() => handlePlay(selectedSeason, ep.episode_number)}
@@ -275,7 +277,7 @@ export default function DetailsScreen() {
                       </Text>
                     </View>
                     <MaterialIcons name="play-circle-outline" size={28} color={Colors.light.tint} />
-                  </TouchableOpacity>
+                  </TVTouchable>
                 ))
               )}
             </View>

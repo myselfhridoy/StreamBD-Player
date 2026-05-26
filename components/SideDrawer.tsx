@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Modal, Animated, Dimensions, TouchableWithoutFeedback, Linking, Share, ScrollView, BackHandler, Alert } from 'react-native';
+import { TVTouchable } from './TVTouchable';
+
+import { StyleSheet, View, Text, Modal, Animated, Dimensions, TouchableWithoutFeedback, Linking, Share, ScrollView, BackHandler, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { clearTokenCache } from '../utils/tokenParser';
@@ -98,10 +100,10 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
           
           <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
             {menuItems.map((item, index) => (
-              <TouchableOpacity key={index} style={styles.menuItem} onPress={item.onPress}>
+              <TVTouchable key={index} style={styles.menuItem} onPress={item.onPress}>
                 <MaterialIcons name={item.icon as any} size={24} color="#fff" style={styles.menuIcon} />
                 <Text style={styles.menuText}>{item.label}</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             ))}
             <View style={{ height: 40 }} />
           </ScrollView>

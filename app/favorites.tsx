@@ -1,6 +1,8 @@
 import Text from '../components/Text';
+import { TVTouchable } from '../components/TVTouchable';
+
 import React, { useState, useEffect, memo, useCallback } from 'react';
-import { StyleSheet, View, TouchableOpacity, FlatList, Image, Dimensions, TextInput, TouchableHighlight } from 'react-native';
+import { StyleSheet, View, FlatList, Image, Dimensions, TextInput } from 'react-native';
 import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -12,7 +14,7 @@ const { width } = Dimensions.get('window');
 const numColumns = Math.floor(width / 100);
 
 const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void, onLongPress: (url: string) => void }) => (
-  <TouchableHighlight 
+  <TVTouchable 
     style={styles.channelItem} 
     onPress={() => onPress(item, index)} 
     onLongPress={() => onLongPress(item.url)}
@@ -25,18 +27,18 @@ const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress }: { item:
         ) : (
           <MaterialIcons name="tv" size={40} color="#ccc" />
         )}
-        <TouchableOpacity 
+        <TVTouchable 
           style={styles.favoriteIcon} 
           onPress={() => onLongPress(item.url)}
         >
           <MaterialIcons name="star" size={20} color="#FFD700" />
-        </TouchableOpacity>
+        </TVTouchable>
       </View>
       <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
         {item.name}
       </Text>
     </View>
-  </TouchableHighlight>
+  </TVTouchable>
 ));
 
 export default function FavoritesScreen() {
@@ -145,9 +147,9 @@ export default function FavoritesScreen() {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TVTouchable onPress={() => router.back()} style={styles.iconBtn}>
           <MaterialIcons name="arrow-back" size={28} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
         
         {!isSearchActive ? (
           <Text style={styles.headerTitle}>Favourites</Text>
@@ -164,21 +166,21 @@ export default function FavoritesScreen() {
           </View>
         )}
         
-        <TouchableOpacity onPress={() => {
+        <TVTouchable onPress={() => {
           if (isSearchActive) setSearchQuery('');
           setIsSearchActive(!isSearchActive);
         }} style={styles.iconBtn}>
           <MaterialIcons name={isSearchActive ? "close" : "search"} size={26} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn}>
+        </TVTouchable>
+        <TVTouchable style={styles.iconBtn}>
           <MaterialIcons name="star" size={26} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
       </View>
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         {['LIVE EVENTS', 'CHANNELS', 'VOD'].map((tab) => (
-          <TouchableOpacity 
+          <TVTouchable 
             key={tab} 
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab as any)}
@@ -186,7 +188,7 @@ export default function FavoritesScreen() {
             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
               {tab}
             </Text>
-          </TouchableOpacity>
+          </TVTouchable>
         ))}
       </View>
 

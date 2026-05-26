@@ -1,6 +1,8 @@
 import Text from '../../components/Text';
+import { TVTouchable } from '../../components/TVTouchable';
+
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, FlatList, ActivityIndicator, Image, TouchableHighlight, TextInput } from 'react-native';
+import { StyleSheet, View, FlatList, ActivityIndicator, Image, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -80,7 +82,7 @@ export default function CategoriesScreen() {
   };
 
   const renderItem = ({ item }: { item: CategoryItem }) => (
-    <TouchableHighlight 
+    <TVTouchable 
       style={styles.card} 
       onPress={() => handlePress(item)}
       underlayColor="#3a3a4c"
@@ -92,7 +94,7 @@ export default function CategoriesScreen() {
         </View>
         <Text style={styles.cardText} numberOfLines={2}>{item.name}</Text>
       </View>
-    </TouchableHighlight>
+    </TVTouchable>
   );
 
   return (
@@ -100,9 +102,9 @@ export default function CategoriesScreen() {
       <SideDrawer visible={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
       
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerIconBtn} onPress={() => setIsDrawerOpen(true)}>
+        <TVTouchable style={styles.headerIconBtn} onPress={() => setIsDrawerOpen(true)}>
           <MaterialIcons name="menu" size={28} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
         
         {!isSearchActive ? (
           <Text style={styles.headerTitle}>Categories</Text>
@@ -123,7 +125,7 @@ export default function CategoriesScreen() {
           </View>
         )}
         
-        <TouchableOpacity 
+        <TVTouchable 
           style={styles.headerIconBtn} 
           onPress={() => {
             if (isSearchActive) setSearchQuery('');
@@ -131,11 +133,11 @@ export default function CategoriesScreen() {
           }}
         >
           <MaterialIcons name={isSearchActive ? "close" : "search"} size={26} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
         
-        <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push('/favorites')}>
+        <TVTouchable style={styles.headerIconBtn} onPress={() => router.push('/favorites')}>
           <MaterialIcons name="star" size={26} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
       </View>
 
       {loading ? (
@@ -145,9 +147,9 @@ export default function CategoriesScreen() {
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchData}>
+          <TVTouchable style={styles.retryBtn} onPress={fetchData}>
             <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
+          </TVTouchable>
         </View>
       ) : (
         <FlatList

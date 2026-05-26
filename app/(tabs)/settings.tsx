@@ -1,6 +1,8 @@
 import Text from '../../components/Text';
+import { TVTouchable } from '../../components/TVTouchable';
+
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Switch, TouchableOpacity, Modal } from 'react-native';;
+import { StyleSheet, View, ScrollView, Switch, Modal } from 'react-native';;
 import { useSettings } from '../context/SettingsContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -37,13 +39,13 @@ export default function SettingsScreen() {
   }: { 
     title: string, description: string, value?: string, onPress: () => void 
   }) => (
-    <TouchableOpacity style={styles.settingRow} onPress={onPress}>
+    <TVTouchable style={styles.settingRow} onPress={onPress}>
       <View style={styles.settingTextContainer}>
         <Text style={styles.settingTitle}>{title}</Text>
         <Text style={styles.settingDescription}>{description}</Text>
       </View>
       {value && <Text style={styles.settingValueText}>{value}</Text>}
-    </TouchableOpacity>
+    </TVTouchable>
   );
 
   return (
@@ -144,7 +146,7 @@ export default function SettingsScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Seek duration</Text>
             {[5, 10, 15, 30, 60].map((sec) => (
-              <TouchableOpacity 
+              <TVTouchable 
                 key={sec} 
                 style={styles.modalOption}
                 onPress={() => { updateSetting('seekDuration', sec); setShowSeekModal(false); }}
@@ -153,12 +155,12 @@ export default function SettingsScreen() {
                   {settings.seekDuration === sec && <View style={styles.radioInner} />}
                 </View>
                 <Text style={styles.modalOptionText}>{sec} seconds</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             ))}
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setShowSeekModal(false)}>
+              <TVTouchable onPress={() => setShowSeekModal(false)}>
                 <Text style={styles.modalCancel}>Cancel</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             </View>
           </View>
         </View>

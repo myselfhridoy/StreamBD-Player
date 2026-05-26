@@ -1,6 +1,8 @@
 import Text from '../../components/Text';
+import { TVTouchable } from '../../components/TVTouchable';
+
 import React, { useState, useRef, useCallback } from 'react';
-import { StyleSheet, TextInput, ScrollView, TouchableOpacity, View, Animated, Modal, BackHandler, Alert } from 'react-native';
+import { StyleSheet, TextInput, ScrollView, View, Animated, Modal, BackHandler, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -104,13 +106,13 @@ export default function HomeScreen() {
       
       {/* Custom Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setIsDrawerOpen(true)} style={styles.iconBtn}>
+        <TVTouchable onPress={() => setIsDrawerOpen(true)} style={styles.iconBtn}>
           <MaterialIcons name="menu" size={28} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
         <Text style={styles.headerTitle}>StreamBD Player</Text>
-        <TouchableOpacity onPress={() => router.push('/history')} style={styles.iconBtn}>
+        <TVTouchable onPress={() => router.push('/history')} style={styles.iconBtn}>
           <MaterialIcons name="history" size={26} color="#fff" />
-        </TouchableOpacity>
+        </TVTouchable>
       </View>
 
       <ScrollView 
@@ -189,13 +191,13 @@ export default function HomeScreen() {
       )}
 
       {/* FAB Play Button */}
-      <TouchableOpacity 
+      <TVTouchable 
         style={[styles.fab, { bottom: Math.max(insets.bottom + 80, 90) }]} 
         activeOpacity={0.8} 
         onPress={handlePlay}
       >
         <MaterialIcons name="play-arrow" size={32} color="#fff" />
-      </TouchableOpacity>
+      </TVTouchable>
 
       {/* Custom UA Modal */}
       <Modal visible={showCustomUAModal} transparent animationType="fade">
@@ -210,10 +212,10 @@ export default function HomeScreen() {
               placeholderTextColor="#666" 
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setShowCustomUAModal(false)}>
+              <TVTouchable onPress={() => setShowCustomUAModal(false)}>
                 <Text style={styles.modalCancel}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => { 
+              </TVTouchable>
+              <TVTouchable onPress={() => { 
                 if (customUAInput.trim()) {
                   setCustomUA(customUAInput.trim()); 
                   setUserAgent(customUAInput.trim()); 
@@ -221,7 +223,7 @@ export default function HomeScreen() {
                 setShowCustomUAModal(false); 
               }}>
                 <Text style={styles.modalOk}>OK</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             </View>
           </View>
         </View>
