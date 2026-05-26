@@ -2,7 +2,7 @@ import Text from '../components/Text';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, TouchableOpacity, FlatList, Alert } from 'react-native';;
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,9 +11,11 @@ export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const [history, setHistory] = useState<any[]>([]);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadHistory();
+    }, [])
+  );
 
   const loadHistory = async () => {
     try {

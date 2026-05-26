@@ -277,20 +277,6 @@ export default function PlayerScreen() {
 
   const handleLoad = async (data: OnLoadData) => {
     setIsBuffering(false);
-    
-    // Save to history
-    if (mediaUrl) {
-      try {
-        const existing = await AsyncStorage.getItem('streamHistory');
-        let historyList = existing ? JSON.parse(existing) : [];
-        historyList = historyList.filter((item: any) => item.url !== mediaUrl);
-        historyList.unshift({ 
-          url: mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, timestamp: Date.now() 
-        });
-        if (historyList.length > 50) historyList.pop();
-        await AsyncStorage.setItem('streamHistory', JSON.stringify(historyList));
-      } catch (e) { }
-    }
 
     // Resume logic
     if (settings.resumePlay && mediaUrl) {
