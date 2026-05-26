@@ -1,6 +1,6 @@
 import Text from '../components/Text';
 import React, { useState, useEffect, memo, useCallback } from 'react';
-import { StyleSheet, View, TouchableOpacity, FlatList, ActivityIndicator, Image, Modal, TextInput, Dimensions } from 'react-native';;
+import { StyleSheet, View, TouchableOpacity, FlatList, ActivityIndicator, Image, Modal, TextInput, Dimensions, TouchableHighlight } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -12,23 +12,35 @@ import * as FileSystem from 'expo-file-system';
 const { width } = Dimensions.get('window');
 const numColumns = Math.floor(width / 100);
 
-const MemoizedChannelItem = memo(({ item, index, onPress }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void }) => (
-  <TouchableOpacity style={styles.channelItem} onPress={() => onPress(item, index)}>
-    <View style={styles.logoContainer}>
-      {item.logo ? (
-        <Image source={{ uri: item.logo }} style={styles.channelLogo} resizeMode="contain" />
-      ) : (
-        <MaterialIcons name="tv" size={40} color="#ccc" />
-      )}
+const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress, isFavorite }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void, onLongPress: (item: Channel) => void, isFavorite: boolean }) => (
+  <TouchableHighlight 
+    style={[styles.channelItem, isFavorite && styles.favoriteItem]} 
+    onPress={() => onPress(item, index)}
+    onLongPress={() => onLongPress(item)}
+    underlayColor="rgba(255,255,255,0.1)"
+  >
+    <View style={{ alignItems: 'center', width: '100%' }}>
+      <View style={styles.logoContainer}>
+        {item.logo ? (
+          <Image source={{ uri: item.logo }} style={styles.channelLogo} resizeMode="contain" />
+        ) : (
+          <Text style={{color: '#E50914', fontWeight: 'bold', fontSize: 18}}>Live</Text>
+        )}
+        {isFavorite && (
+          <View style={styles.favBadge}>
+            <MaterialIcons name="star" size={12} color="#FFD700" />
+          </View>
+        )}
+      </View>
+      <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
+        {item.name}
+      </Text>
     </View>
-    <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
-      {item.name}
-    </Text>
-  </TouchableOpacity>
+  </TouchableHighlight>
 ));
 
 export default function ChannelBrowserScreen() {
-  const { playlistUrl, playlistName, isLocal } = useLocalSearchParams();
+  const { playlistUrl, playlistName, isLocal, isLiveEvent } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setPlaylist } = usePlaylist();
@@ -76,7 +88,8 @@ export default function ChannelBrowserScreen() {
       if (isFav) {
         favs = favs.filter(f => f.url !== channel.url);
       } else {
-        favs.push(channel);
+        // Tag with isLiveEvent if added from the Live TV section
+        favs.push({ ...channel, isLiveEvent: isLiveEvent === 'true' } as any);
       }
       
       await AsyncStorage.setItem('favorite_channels', JSON.stringify(favs));
@@ -148,14 +161,21 @@ export default function ChannelBrowserScreen() {
         streamFormat: 'auto',
         channelName: channel.name,
         channelLogo: channel.logo,
-        channelGroup: channel.group
+        channelGroup: channel.group,
+        isLiveEvent: isLiveEvent === 'true' ? 'true' : 'false'
       }
     });
   }, [filteredChannels, setPlaylist, router]);
 
   const renderChannel = useCallback(({ item, index }: { item: Channel, index: number }) => (
-    <MemoizedChannelItem item={item} index={index} onPress={handleChannelPress} />
-  ), [handleChannelPress]);
+    <MemoizedChannelItem 
+      item={item} 
+      index={index} 
+      onPress={handleChannelPress} 
+      onLongPress={toggleFavorite}
+      isFavorite={favoriteUrls.has(item.url)}
+    />
+  ), [handleChannelPress, favoriteUrls]);
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 15) }]}>
@@ -393,10 +413,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
   },
+  favoriteItem: {
+    backgroundColor: 'rgba(255, 215, 0, 0.05)',
+    borderRadius: 12,
+  },
   logoContainer: {
     width: 75,
     height: 75,
-    backgroundColor: '#fff',
+    backgroundColor: '#1C2039',
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
@@ -404,6 +428,15 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#2A2E45',
     overflow: 'hidden',
+    position: 'relative',
+  },
+  favBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
+    padding: 2,
   },
   channelLogo: {
     width: 50,

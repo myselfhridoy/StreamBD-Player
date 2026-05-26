@@ -5,6 +5,9 @@ export interface Channel {
   url: string;
   userAgent?: string;
   cookie?: string;
+  httpReferer?: string;
+  origin?: string;
+  isLiveEvent?: boolean;
 }
 
 export const parseM3U = (content: string): Channel[] => {

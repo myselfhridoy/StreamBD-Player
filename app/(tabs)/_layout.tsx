@@ -51,10 +51,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="local"
+        name="categories"
         options={{
-          title: 'Local',
-          tabBarIcon: ({ color }) => <TabBarIcon name="folder" color={color} />,
+          title: 'Categories',
+          tabBarIcon: ({ color }) => <TabBarIcon name="dashboard" color={color} />,
         }}
       />
       <Tabs.Screen

@@ -16,7 +16,7 @@ import { usePlaylist } from './context/PlaylistContext';
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup, fromHome } = params;
+  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup, fromHome, isLiveEvent } = params;
 
   const { settings } = useSettings();
   const { nextChannel, prevChannel } = usePlaylist();
@@ -168,7 +168,8 @@ export default function PlayerScreen() {
             logo: channelLogo || '',
             group: channelGroup || 'CHANNELS',
             cookie: cookie || '',
-            userAgent: userAgent || 'Default'
+            userAgent: userAgent || 'Default',
+            isLiveEvent: isLiveEvent === 'true'
           });
           setIsFavorite(true);
         } else {

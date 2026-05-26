@@ -1,6 +1,6 @@
 import Text from '../components/Text';
 import React, { useState, useEffect, memo, useCallback } from 'react';
-import { StyleSheet, View, TouchableOpacity, FlatList, Image, Dimensions, TextInput } from 'react-native';;
+import { StyleSheet, View, TouchableOpacity, FlatList, Image, Dimensions, TextInput, TouchableHighlight } from 'react-native';
 import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -12,24 +12,31 @@ const { width } = Dimensions.get('window');
 const numColumns = Math.floor(width / 100);
 
 const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void, onLongPress: (url: string) => void }) => (
-  <TouchableOpacity style={styles.channelItem} onPress={() => onPress(item, index)} onLongPress={() => onLongPress(item.url)}>
-    <View style={styles.logoContainer}>
-      {item.logo ? (
-        <Image source={{ uri: item.logo }} style={styles.channelLogo} resizeMode="contain" />
-      ) : (
-        <MaterialIcons name="tv" size={40} color="#ccc" />
-      )}
-      <TouchableOpacity 
-        style={styles.favoriteIcon} 
-        onPress={() => onLongPress(item.url)}
-      >
-        <MaterialIcons name="star" size={20} color="#FFD700" />
-      </TouchableOpacity>
+  <TouchableHighlight 
+    style={styles.channelItem} 
+    onPress={() => onPress(item, index)} 
+    onLongPress={() => onLongPress(item.url)}
+    underlayColor="rgba(255,255,255,0.1)"
+  >
+    <View style={{ alignItems: 'center', width: '100%' }}>
+      <View style={styles.logoContainer}>
+        {item.logo ? (
+          <Image source={{ uri: item.logo }} style={styles.channelLogo} resizeMode="contain" />
+        ) : (
+          <MaterialIcons name="tv" size={40} color="#ccc" />
+        )}
+        <TouchableOpacity 
+          style={styles.favoriteIcon} 
+          onPress={() => onLongPress(item.url)}
+        >
+          <MaterialIcons name="star" size={20} color="#FFD700" />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
+        {item.name}
+      </Text>
     </View>
-    <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
-      {item.name}
-    </Text>
-  </TouchableOpacity>
+  </TouchableHighlight>
 ));
 
 export default function FavoritesScreen() {
@@ -70,9 +77,10 @@ export default function FavoritesScreen() {
   };
 
   // Auto-categorization logic
-  const getCategory = (channel: Channel) => {
-    // As per user request, M3U channels always go to CHANNELS tab.
-    // Live Events and VOD tabs are reserved for future features.
+  const getCategory = (channel: any) => {
+    if (channel.isLiveEvent) {
+      return 'LIVE EVENTS';
+    }
     return 'CHANNELS';
   };
 
@@ -117,34 +125,34 @@ export default function FavoritesScreen() {
       
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-            <MaterialIcons name="arrow-back" size={28} color="#fff" />
-          </TouchableOpacity>
-          {!isSearchActive ? (
-            <Text style={styles.headerTitle}>Favourites</Text>
-          ) : (
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <MaterialIcons name="arrow-back" size={28} color="#fff" />
+        </TouchableOpacity>
+        
+        {!isSearchActive ? (
+          <Text style={styles.headerTitle}>Favourites</Text>
+        ) : (
+          <View style={styles.searchContainer}>
             <TextInput
               style={styles.searchInput}
               placeholder="Search favorites..."
-              placeholderTextColor="#999"
+              placeholderTextColor="#888"
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
             />
-          )}
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => {
-            if (isSearchActive) setSearchQuery('');
-            setIsSearchActive(!isSearchActive);
-          }} style={styles.iconBtn}>
-            <MaterialIcons name="search" size={26} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconBtn, styles.starBtnActive]}>
-            <MaterialIcons name="star" size={22} color="#fff" />
-          </TouchableOpacity>
-        </View>
+          </View>
+        )}
+        
+        <TouchableOpacity onPress={() => {
+          if (isSearchActive) setSearchQuery('');
+          setIsSearchActive(!isSearchActive);
+        }} style={styles.iconBtn}>
+          <MaterialIcons name={isSearchActive ? "close" : "search"} size={26} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconBtn}>
+          <MaterialIcons name="star" size={26} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -152,10 +160,10 @@ export default function FavoritesScreen() {
         {['LIVE EVENTS', 'CHANNELS', 'VOD'].map((tab) => (
           <TouchableOpacity 
             key={tab} 
-            style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+            style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab as any)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
               {tab}
             </Text>
           </TouchableOpacity>
@@ -175,8 +183,9 @@ export default function FavoritesScreen() {
         maxToRenderPerBatch={10}
         windowSize={5}
         ListEmptyComponent={
-          <View style={styles.centerContent}>
-            <Text style={styles.emptyText}>No favourite channel found!</Text>
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="star-border" size={64} color="#8a8aa3" style={{ marginBottom: 15 }} />
+            <Text style={styles.emptyText}>No favorites in {activeTab}</Text>
           </View>
         }
       />
@@ -187,71 +196,64 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121526', // Match the deep blue background from screenshots
+    backgroundColor: '#0d0d14',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    paddingHorizontal: 15,
     paddingBottom: 15,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   iconBtn: {
     padding: 8,
-    marginLeft: 5,
-  },
-  starBtnActive: {
-    backgroundColor: '#2A2E45',
     borderRadius: 20,
-    padding: 10,
   },
   headerTitle: {
+    flex: 1,
     color: '#fff',
     fontSize: 22,
-    fontWeight: '500',
+    fontFamily: 'Inter_Bold',
     marginLeft: 15,
+  },
+  searchContainer: {
     flex: 1,
+    marginLeft: 15,
+    marginRight: 10,
   },
   searchInput: {
-    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     color: '#fff',
-    fontSize: 18,
-    marginLeft: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#666',
-    paddingVertical: 5,
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    fontSize: 16,
+    fontFamily: 'Inter_Medium',
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#181A20', // Slightly different background for tabs
+    paddingHorizontal: 15,
+    marginBottom: 15,
   },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 15,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginRight: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  tabBtnActive: {
-    borderBottomColor: '#00E5FF', // Cyan accent color from screenshot
+  activeTab: {
+    backgroundColor: 'rgba(79, 70, 229, 0.2)',
+    borderColor: '#4F46E5',
   },
   tabText: {
-    color: '#999',
+    color: '#8a8aa3',
     fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    fontFamily: 'Inter_SemiBold',
   },
-  tabTextActive: {
-    color: '#00E5FF',
+  activeTabText: {
+    color: '#fff',
   },
   gridContainer: {
     paddingHorizontal: 10,
@@ -267,13 +269,13 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: 75,
     height: 75,
-    backgroundColor: '#fff',
+    backgroundColor: '#1a1a24',
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    borderWidth: 2,
-    borderColor: '#2A2E45',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
   },
   channelLogo: {
@@ -294,16 +296,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     textAlign: 'center',
-    fontWeight: '500',
+    fontFamily: 'Inter_SemiBold',
   },
-  centerContent: {
+  emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   emptyText: {
-    color: '#fff',
+    color: '#8a8aa3',
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: 'Inter_Medium',
   },
 });

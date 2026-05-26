@@ -94,22 +94,23 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#0d0d14',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 15,
+    paddingHorizontal: 15,
+    paddingBottom: 15,
   },
   backBtn: {
-    padding: 5,
-    marginRight: 15,
+    padding: 8,
+    borderRadius: 20,
+    marginRight: 10,
   },
   headerTitle: {
     color: '#fff',
     fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: 'Inter_Bold',
   },
   listContent: {
     paddingHorizontal: 15,
@@ -119,28 +120,32 @@ const styles = StyleSheet.create({
   historyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e1e1e',
+    backgroundColor: '#1a1a24',
     borderRadius: 12,
     marginBottom: 15,
     paddingVertical: 15,
     paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   historyUrlBtn: {
     flex: 1,
     marginRight: 10,
   },
   historyText: {
-    color: '#ccc',
+    color: '#8a8aa3',
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: 'Inter_Medium',
   },
   deleteBtn: {
     padding: 5,
   },
   emptyText: {
-    color: '#888',
+    color: '#8a8aa3',
     textAlign: 'center',
     marginTop: 50,
     fontSize: 16,
+    fontFamily: 'Inter_Medium',
   },
 });
