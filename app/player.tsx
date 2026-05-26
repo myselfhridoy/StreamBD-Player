@@ -1,18 +1,19 @@
-import Text from '../components/Text';
-import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, TouchableWithoutFeedback, Animated, ActivityIndicator, ScrollView, Dimensions, PanResponder, AppState, Platform, Pressable } from 'react-native';;
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import Video, { DRMType, OnLoadData, ReactVideoSource, VideoRef, SelectedTrackType, SelectedVideoTrackType } from 'react-native-video';
-import Slider from '@react-native-community/slider';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Slider from '@react-native-community/slider';
 import * as Brightness from 'expo-brightness';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Video, { DRMType, OnLoadData, ReactVideoSource, SelectedTrackType, SelectedVideoTrackType, VideoRef } from 'react-native-video';
 import { VolumeManager } from 'react-native-volume-manager';
-import { useSettings } from './context/SettingsContext';
-import { usePlaylist } from './context/PlaylistContext';
+import Text from '../components/Text';
 import { resolveCustomTokenUrl } from '../utils/tokenParser';
+import { usePlaylist } from './context/PlaylistContext';
+import { useSettings } from './context/SettingsContext';
+;
 
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
@@ -22,7 +23,7 @@ export default function PlayerScreen() {
   const { settings } = useSettings();
   const { nextChannel, prevChannel } = usePlaylist();
   const videoRef = useRef<VideoRef>(null);
-  
+
   // Basic Playback State
   const [paused, setPaused] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -32,16 +33,16 @@ export default function PlayerScreen() {
   const [showControls, setShowControls] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
-  
+
   // Advanced Features State
   const [audioTracks, setAudioTracks] = useState<any[]>([]);
   const [textTracks, setTextTracks] = useState<any[]>([]);
   const [videoTracks, setVideoTracks] = useState<any[]>([]);
-  
+
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<number | undefined>(undefined);
   const [selectedTextTrack, setSelectedTextTrack] = useState<number>(-1); // -1 = disabled
   const [selectedVideoTrack, setSelectedVideoTrack] = useState<number>(0); // 0 = auto
-  
+
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch' | 'auto'>('auto');
   const [isPiPActive, setIsPiPActive] = useState(false);
@@ -53,8 +54,8 @@ export default function PlayerScreen() {
   const [activeTab, setActiveTab] = useState<'audio' | 'subs' | 'quality' | 'speed' | 'sources'>('audio');
   const [vodSources, setVodSources] = useState<any[]>([]);
   const [currentVodIndex, setCurrentVodIndex] = useState<number>(0);
-  
-  const [playerError, setPlayerError] = useState<{title: string, message: string} | null>(null);
+
+  const [playerError, setPlayerError] = useState<{ title: string, message: string } | null>(null);
 
   // Overlay feedback
   const [overlayText, setOverlayText] = useState('');
@@ -89,7 +90,7 @@ export default function PlayerScreen() {
     try {
       const data = await AsyncStorage.getItem('streamHistory');
       let history = data ? JSON.parse(data) : [];
-      
+
       const newItem = {
         url: mediaUrl,
         name: channelName || mediaUrl,
@@ -108,14 +109,14 @@ export default function PlayerScreen() {
         tokenReplace,
         tokenId
       };
-      
+
       // Remove duplicate
       history = history.filter((item: any) => item.url !== mediaUrl);
       // Add to front
       history.unshift(newItem);
       // Keep only last 100
       if (history.length > 100) history = history.slice(0, 100);
-      
+
       await AsyncStorage.setItem('streamHistory', JSON.stringify(history));
     } catch (e) {
       console.log('Failed to save history', e);
@@ -145,7 +146,7 @@ export default function PlayerScreen() {
   useEffect(() => {
     return () => {
       if (settings.resumePlay && currentTime > 0 && duration > 0 && !isLive && mediaUrl) {
-        AsyncStorage.setItem(`resume_${mediaUrl}`, currentTime.toString()).catch(() => {});
+        AsyncStorage.setItem(`resume_${mediaUrl}`, currentTime.toString()).catch(() => { });
       }
     };
   }, [currentTime, settings.resumePlay, duration, isLive, mediaUrl]);
@@ -165,7 +166,7 @@ export default function PlayerScreen() {
     try {
       const data = await AsyncStorage.getItem('favorite_channels');
       let favs = data ? JSON.parse(data) : [];
-      
+
       if (isFavorite) {
         favs = favs.filter((f: any) => f.url !== mediaUrl);
         setIsFavorite(false);
@@ -201,7 +202,7 @@ export default function PlayerScreen() {
         currentVolume.current = typeof v === 'number' ? v : v.volume;
         const b = await Brightness.getBrightnessAsync();
         if (b >= 0) currentBrightness.current = b;
-      } catch (e) {}
+      } catch (e) { }
     })();
     volSub = VolumeManager.addVolumeListener((result) => {
       currentVolume.current = result.volume;
@@ -270,7 +271,7 @@ export default function PlayerScreen() {
   };
 
   const hideControls = () => {
-    if (showSettings) return; 
+    if (showSettings) return;
     Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true })
       .start(() => setShowControls(false));
   };
@@ -296,16 +297,16 @@ export default function PlayerScreen() {
           videoRef.current?.seek(parseFloat(savedTime));
           AsyncStorage.removeItem('resume_vod');
         }
-      } catch(e) {}
+      } catch (e) { }
     } else if (settings.resumePlay && mediaUrl) {
       try {
         const savedTime = await AsyncStorage.getItem(`resume_${mediaUrl}`);
         if (savedTime && parseFloat(savedTime) > 0) {
           videoRef.current?.seek(parseFloat(savedTime));
         }
-      } catch(e) {}
+      } catch (e) { }
     }
-    
+
     if (!data.duration || data.duration <= 0 || data.duration > 86400) {
       setIsLive(true);
       setDuration(0);
@@ -395,7 +396,7 @@ export default function PlayerScreen() {
   if (cookie) headers['Cookie'] = cookie as string;
   if (referer) headers['Referer'] = referer as string;
   if (origin) headers['Origin'] = origin as string;
-  
+
   if (userAgent && userAgent !== 'Default') {
     headers['User-Agent'] = userAgent as string;
   } else if (!headers['User-Agent']) {
@@ -408,7 +409,7 @@ export default function PlayerScreen() {
   if (drmUrl) {
     let type = DRMType.WIDEVINE;
     let finalLicenseServer = drmUrl as string;
-    
+
     if (drmScheme === 'playready') type = DRMType.PLAYREADY;
     else if (drmScheme === 'clearkey') {
       type = DRMType.CLEARKEY;
@@ -493,96 +494,96 @@ export default function PlayerScreen() {
   };
 
   const performUrlResolution = async () => {
-      if (!finalMediaUrl) {
-        setResolvedMediaUrl(null);
-        return;
-      }
-      setPlayerError(null);
-      setIsBuffering(true);
-      
-      let currentUrl = finalMediaUrl;
-      let currentHeaders = { ...headers };
-      
-      try {
-        // 1. Resolve Token if present
-        if (tokenUrl) {
-          const res = await resolveCustomTokenUrl(
-             currentUrl, 
-             tokenUrl as string, 
-             tokenId ? Number(tokenId) : undefined, 
-             currentHeaders, 
-             tokenMatch as string, 
-             tokenReplace as string
-          );
-          currentUrl = res.url;
-          if (res.headers) currentHeaders = { ...currentHeaders, ...res.headers };
-          
-          if (res.drm) {
-             let type = DRMType.WIDEVINE;
-             if (res.drm.type === 'playready') type = DRMType.PLAYREADY;
-             else if (res.drm.type === 'clearkey') type = DRMType.CLEARKEY;
-             
-             let licenseServer = res.drm.licenseServer || '';
-             if (type === DRMType.CLEARKEY && res.drm.rawKeyPair) {
-                try {
-                  const [kidHex, keyHex] = res.drm.rawKeyPair.split(':');
-                  const hexToBase64Url = (hex: string) => {
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-                    let b64 = '', i = 0;
-                    while (i < hex.length) {
-                      const b1 = parseInt(hex.substring(i, i + 2) || '00', 16);
-                      const b2 = parseInt(hex.substring(i + 2, i + 4) || '00', 16);
-                      const b3 = parseInt(hex.substring(i + 4, i + 6) || '00', 16);
-                      b64 += chars[(b1 >> 2) & 0x3f];
-                      b64 += chars[((b1 & 0x03) << 4) | ((b2 >> 4) & 0x0f)];
-                      if (i + 2 < hex.length) b64 += chars[((b2 & 0x0f) << 2) | ((b3 >> 6) & 0x03)];
-                      if (i + 4 < hex.length) b64 += chars[b3 & 0x3f];
-                      i += 6;
-                    }
-                    return b64;
-                  };
-                  licenseServer = JSON.stringify({
-                    keys: [{ kty: 'oct', k: hexToBase64Url(keyHex), kid: hexToBase64Url(kidHex) }],
-                    type: 'temporary'
-                  });
-                } catch(e) {}
-             }
-             setResolvedDrm({ type, licenseServer, headers: Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined });
+    if (!finalMediaUrl) {
+      setResolvedMediaUrl(null);
+      return;
+    }
+    setPlayerError(null);
+    setIsBuffering(true);
+
+    let currentUrl = finalMediaUrl;
+    let currentHeaders = { ...headers };
+
+    try {
+      // 1. Resolve Token if present
+      if (tokenUrl) {
+        const res = await resolveCustomTokenUrl(
+          currentUrl,
+          tokenUrl as string,
+          tokenId ? Number(tokenId) : undefined,
+          currentHeaders,
+          tokenMatch as string,
+          tokenReplace as string
+        );
+        currentUrl = res.url;
+        if (res.headers) currentHeaders = { ...currentHeaders, ...res.headers };
+
+        if (res.drm) {
+          let type = DRMType.WIDEVINE;
+          if (res.drm.type === 'playready') type = DRMType.PLAYREADY;
+          else if (res.drm.type === 'clearkey') type = DRMType.CLEARKEY;
+
+          let licenseServer = res.drm.licenseServer || '';
+          if (type === DRMType.CLEARKEY && res.drm.rawKeyPair) {
+            try {
+              const [kidHex, keyHex] = res.drm.rawKeyPair.split(':');
+              const hexToBase64Url = (hex: string) => {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+                let b64 = '', i = 0;
+                while (i < hex.length) {
+                  const b1 = parseInt(hex.substring(i, i + 2) || '00', 16);
+                  const b2 = parseInt(hex.substring(i + 2, i + 4) || '00', 16);
+                  const b3 = parseInt(hex.substring(i + 4, i + 6) || '00', 16);
+                  b64 += chars[(b1 >> 2) & 0x3f];
+                  b64 += chars[((b1 & 0x03) << 4) | ((b2 >> 4) & 0x0f)];
+                  if (i + 2 < hex.length) b64 += chars[((b2 & 0x0f) << 2) | ((b3 >> 6) & 0x03)];
+                  if (i + 4 < hex.length) b64 += chars[b3 & 0x3f];
+                  i += 6;
+                }
+                return b64;
+              };
+              licenseServer = JSON.stringify({
+                keys: [{ kty: 'oct', k: hexToBase64Url(keyHex), kid: hexToBase64Url(kidHex) }],
+                type: 'temporary'
+              });
+            } catch (e) { }
           }
+          setResolvedDrm({ type, licenseServer, headers: Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined });
         }
-
-        // 2. Pre-fetch the URL to resolve any HTTP 301/302 redirects
-        // This is crucial because ExoPlayer blocks HTTPS -> HTTP redirects by default
-        const res = await fetch(currentUrl, {
-          method: 'HEAD', // Try HEAD first to avoid downloading body
-          headers: currentHeaders
-        });
-        
-        let targetUrl = res.url || currentUrl;
-        
-        // If HEAD fails (some servers block it or return 405/403), try GET
-        if (!res.ok) {
-            const getRes = await fetch(currentUrl, { method: 'GET', headers: currentHeaders });
-            targetUrl = getRes.url || currentUrl;
-        }
-
-        setResolvedMediaUrl(targetUrl);
-        setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
-      } catch (e) {
-        console.log("Failed to resolve URL, falling back to current", e);
-        setResolvedMediaUrl(currentUrl || finalMediaUrl);
-        setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
       }
+
+      // 2. Pre-fetch the URL to resolve any HTTP 301/302 redirects
+      // This is crucial because ExoPlayer blocks HTTPS -> HTTP redirects by default
+      const res = await fetch(currentUrl, {
+        method: 'HEAD', // Try HEAD first to avoid downloading body
+        headers: currentHeaders
+      });
+
+      let targetUrl = res.url || currentUrl;
+
+      // If HEAD fails (some servers block it or return 405/403), try GET
+      if (!res.ok) {
+        const getRes = await fetch(currentUrl, { method: 'GET', headers: currentHeaders });
+        targetUrl = getRes.url || currentUrl;
+      }
+
+      setResolvedMediaUrl(targetUrl);
+      setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
+    } catch (e) {
+      console.log("Failed to resolve URL, falling back to current", e);
+      setResolvedMediaUrl(currentUrl || finalMediaUrl);
+      setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
+    }
   };
 
   useEffect(() => {
     if (String(isVod) === 'true') {
       AsyncStorage.getItem('@current_vod_sources').then(data => {
         if (data) {
-           const parsed = JSON.parse(data);
-           setVodSources(parsed);
-           const idx = parseInt((vodSourceIndex as string) || '0');
-           setCurrentVodIndex(idx);
+          const parsed = JSON.parse(data);
+          setVodSources(parsed);
+          const idx = parseInt((vodSourceIndex as string) || '0');
+          setCurrentVodIndex(idx);
         }
       });
     }
@@ -590,8 +591,8 @@ export default function PlayerScreen() {
   }, [finalMediaUrl]);
 
   return (
-    <View 
-      style={styles.container} 
+    <View
+      style={styles.container}
       {...panResponder.panHandlers}
       focusable={true}
       //@ts-ignore
@@ -603,83 +604,83 @@ export default function PlayerScreen() {
         }
       }}
     >
-      <Stack.Screen options={{ 
-        headerShown: false, 
-        navigationBarHidden: true, 
+      <Stack.Screen options={{
+        headerShown: false,
+        navigationBarHidden: true,
         statusBarHidden: true,
         orientation: isLandscape ? 'landscape' : 'portrait'
       }} />
-      
+
       <View style={styles.videoContainer}>
         {resolvedMediaUrl ? (
           <Video
             ref={videoRef}
-            source={{ 
-              uri: resolvedMediaUrl, 
-              headers: resolvedHeaders !== undefined ? resolvedHeaders : (Object.keys(headers).length > 0 ? headers : undefined), 
-              drm: resolvedDrm || drmConfig, 
-              type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined 
+            source={{
+              uri: resolvedMediaUrl,
+              headers: resolvedHeaders !== undefined ? resolvedHeaders : (Object.keys(headers).length > 0 ? headers : undefined),
+              drm: resolvedDrm || drmConfig,
+              type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined
             } as ReactVideoSource}
-          controls={false}
-          paused={paused}
-          rate={playbackRate}
-          resizeMode={activeResizeMode}
-          selectedAudioTrack={selectedAudioTrack !== undefined ? { type: SelectedTrackType.INDEX, value: selectedAudioTrack } : undefined}
-          selectedTextTrack={selectedTextTrack === -1 ? { type: SelectedTrackType.DISABLED } : { type: SelectedTrackType.INDEX, value: selectedTextTrack }}
-          selectedVideoTrack={selectedVideoTrack === 0 ? { type: SelectedVideoTrackType.AUTO } : { type: SelectedVideoTrackType.RESOLUTION, value: selectedVideoTrack }}
-          onLoad={handleLoad}
-          onReadyForDisplay={() => setIsReady(true)}
-          onAudioTracks={handleAudioTracks}
-          onTextTracks={handleTextTracks}
-          onVideoTracks={handleVideoTracks}
-          onProgress={(data) => setCurrentTime(data.currentTime)}
-          onBuffer={({ isBuffering }) => setIsBuffering(isBuffering)}
-          onPictureInPictureStatusChanged={(isActive) => setIsPiPActive(isActive.isActive)}
-          onError={(error: any) => {
-            console.log("Video Playback Error:", error);
-            setIsBuffering(false);
-            
-            const errStr = error?.error?.errorString || '';
-            const stack = error?.error?.errorStackTrace || '';
-            const msg = error?.error?.message || '';
+            controls={false}
+            paused={paused}
+            rate={playbackRate}
+            resizeMode={activeResizeMode}
+            selectedAudioTrack={selectedAudioTrack !== undefined ? { type: SelectedTrackType.INDEX, value: selectedAudioTrack } : undefined}
+            selectedTextTrack={selectedTextTrack === -1 ? { type: SelectedTrackType.DISABLED } : { type: SelectedTrackType.INDEX, value: selectedTextTrack }}
+            selectedVideoTrack={selectedVideoTrack === 0 ? { type: SelectedVideoTrackType.AUTO } : { type: SelectedVideoTrackType.RESOLUTION, value: selectedVideoTrack }}
+            onLoad={handleLoad}
+            onReadyForDisplay={() => setIsReady(true)}
+            onAudioTracks={handleAudioTracks}
+            onTextTracks={handleTextTracks}
+            onVideoTracks={handleVideoTracks}
+            onProgress={(data) => setCurrentTime(data.currentTime)}
+            onBuffer={({ isBuffering }) => setIsBuffering(isBuffering)}
+            onPictureInPictureStatusChanged={(isActive) => setIsPiPActive(isActive.isActive)}
+            onError={(error: any) => {
+              console.log("Video Playback Error:", error);
+              setIsBuffering(false);
 
-            let title = 'Playback Error';
-            let message = errStr.replace('ExoPlaybackException: ', '').replace(/_/g, ' ') || msg || 'An unknown error occurred while playing the video.';
+              const errStr = error?.error?.errorString || '';
+              const stack = error?.error?.errorStackTrace || '';
+              const msg = error?.error?.message || '';
 
-            if (stack.includes('403') || errStr.includes('403') || msg.includes('403')) {
-              title = 'Access Denied (403)';
-              message = 'The server rejected the request. The stream token might be invalid or expired.';
-            } else if (stack.includes('404') || errStr.includes('404') || msg.includes('404')) {
-              title = 'Stream Not Found (404)';
-              message = 'The requested video stream could not be found.';
-            } else if (errStr.includes('ERROR_CODE_IO_BAD_HTTP_STATUS')) {
-              title = 'Bad HTTP Status';
-              message = 'The media server returned an invalid response.';
-            } else if (errStr.includes('ERROR_CODE_IO_NETWORK_CONNECTION_FAILED')) {
-              title = 'Network Error';
-              message = 'Failed to connect to the media server. Please check your internet connection.';
-            } else if (stack.includes('NO_UNSUPPORTED_TYPE') && stack.includes('audio/')) {
-              title = 'Unsupported Audio Format';
-              message = 'Your device does not support the audio format of this stream (e.g. Dolby EAC3). Try selecting a different source or quality from Settings > Sources.';
-            } else if (errStr.includes('ERROR_CODE_DECODER_INIT_FAILED') || stack.includes('DecoderInitializationException')) {
-              title = 'Decoder Failed';
-              message = 'Your device hardware does not support the format of this stream. Try a different source.';
-            }
+              let title = 'Playback Error';
+              let message = errStr.replace('ExoPlaybackException: ', '').replace(/_/g, ' ') || msg || 'An unknown error occurred while playing the video.';
 
-            setPlayerError({ title, message });
-          }}
-          style={[styles.video, { opacity: isReady ? 1 : 0 }]}
-          volume={1.0}
-          muted={false}
-          audioOutput="speaker"
-          ignoreSilentSwitch="ignore"
-          playInBackground={false}
-          // Native Patches
-          //@ts-ignore
-          skipSilence={settings.skipSilence}
-          enableTunneling={settings.enableTunneling}
-          progressUpdateInterval={1000}
-        />
+              if (stack.includes('403') || errStr.includes('403') || msg.includes('403')) {
+                title = 'Access Denied (403)';
+                message = 'The server rejected the request. The stream token might be invalid or expired.';
+              } else if (stack.includes('404') || errStr.includes('404') || msg.includes('404')) {
+                title = 'Stream Not Found (404)';
+                message = 'The requested video stream could not be found.';
+              } else if (errStr.includes('ERROR_CODE_IO_BAD_HTTP_STATUS')) {
+                title = 'Bad HTTP Status';
+                message = 'The media server returned an invalid response.';
+              } else if (errStr.includes('ERROR_CODE_IO_NETWORK_CONNECTION_FAILED')) {
+                title = 'Network Error';
+                message = 'Failed to connect to the media server. Please check your internet connection.';
+              } else if (stack.includes('NO_UNSUPPORTED_TYPE') && stack.includes('audio/')) {
+                title = 'Unsupported Audio Format';
+                message = 'Your device does not support the audio format of this stream (e.g. Dolby EAC3). Try selecting a different source or quality from Settings > Sources.';
+              } else if (errStr.includes('ERROR_CODE_DECODER_INIT_FAILED') || stack.includes('DecoderInitializationException')) {
+                title = 'Decoder Failed';
+                message = 'Your device hardware does not support the format of this stream. Try a different source.';
+              }
+
+              setPlayerError({ title, message });
+            }}
+            style={[styles.video, { opacity: isReady ? 1 : 0 }]}
+            volume={1.0}
+            muted={false}
+            audioOutput="speaker"
+            ignoreSilentSwitch="ignore"
+            playInBackground={false}
+            // Native Patches
+            //@ts-ignore
+            skipSilence={settings.skipSilence}
+            enableTunneling={settings.enableTunneling}
+            progressUpdateInterval={1000}
+          />
         ) : (
           <View style={[styles.loadingOverlay, { backgroundColor: '#000' }]}>
             <ActivityIndicator size="large" color="#4F46E5" />
@@ -688,10 +689,10 @@ export default function PlayerScreen() {
 
         {/* Loading Overlay */}
         {(isBuffering || !isReady || !resolvedMediaUrl) && !playerError && (
-        <View style={styles.loadingOverlay} pointerEvents="none">
-          <ActivityIndicator size="large" color="#E50914" />
-        </View>
-      )}
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color="#E50914" />
+          </View>
+        )}
       </View>
 
       {/* Error Overlay */}
@@ -807,7 +808,7 @@ export default function PlayerScreen() {
                 </>
               )}
             </ScrollView>
-            <TouchableOpacity style={styles.closeSettingsBtn} onPress={() => {setShowSettings(false); startControlsTimeout();}}>
+            <TouchableOpacity style={styles.closeSettingsBtn} onPress={() => { setShowSettings(false); startControlsTimeout(); }}>
               <MaterialIcons name="close" size={28} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -816,80 +817,80 @@ export default function PlayerScreen() {
 
       {/* Custom Controls Overlay */}
       {!playerError && (
-      <Animated.View style={[styles.controlsOverlay, { opacity: fadeAnim }]} pointerEvents={showControls && !showSettings ? 'box-none' : 'none'}>
-        <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent']} style={styles.topGradient}>
-          <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
-            <MaterialIcons name="arrow-back" size={32} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.topRightControls}>
-            <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>
-              <MaterialIcons name={isFavorite ? "star" : "star-border"} size={28} color={isFavorite ? "#FFD700" : "#fff"} />
+        <Animated.View style={[styles.controlsOverlay, { opacity: fadeAnim }]} pointerEvents={showControls && !showSettings ? 'box-none' : 'none'}>
+          <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent']} style={styles.topGradient}>
+            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
+              <MaterialIcons name="arrow-back" size={32} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={togglePiP}>
-              <MaterialIcons name="picture-in-picture-alt" size={28} color="#fff" />
+            <View style={styles.topRightControls}>
+              <TouchableOpacity style={styles.iconButton} onPress={toggleFavorite}>
+                <MaterialIcons name={isFavorite ? "star" : "star-border"} size={28} color={isFavorite ? "#FFD700" : "#fff"} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconButton} onPress={togglePiP}>
+                <MaterialIcons name="picture-in-picture-alt" size={28} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconButton} onPress={() => { setShowSettings(true); showControlsUI(); }}>
+                <MaterialIcons name="settings" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+
+          <View style={styles.centerControls} pointerEvents="box-none">
+            {!isLive && (
+              <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(Math.max(currentTime - settings.seekDuration, 0)); showControlsUI(); }}>
+                <MaterialIcons name="replay-10" size={48} color="#fff" />
+                <Text style={styles.seekBtnText}>-{settings.seekDuration}s</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity hasTVPreferredFocus={true} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
+              <MaterialIcons name={paused ? "play-arrow" : "pause"} size={64} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={() => { setShowSettings(true); showControlsUI(); }}>
-              <MaterialIcons name="settings" size={28} color="#fff" />
-            </TouchableOpacity>
+            {!isLive && (
+              <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(currentTime + settings.seekDuration); showControlsUI(); }}>
+                <MaterialIcons name="forward-10" size={48} color="#fff" />
+                <Text style={styles.seekBtnText}>+{settings.seekDuration}s</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </LinearGradient>
 
-        <View style={styles.centerControls} pointerEvents="box-none">
-          {!isLive && (
-            <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(Math.max(currentTime - settings.seekDuration, 0)); showControlsUI(); }}>
-              <MaterialIcons name="replay-10" size={48} color="#fff" />
-              <Text style={styles.seekBtnText}>-{settings.seekDuration}s</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity hasTVPreferredFocus={true} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
-            <MaterialIcons name={paused ? "play-arrow" : "pause"} size={64} color="#fff" />
-          </TouchableOpacity>
-          {!isLive && (
-            <TouchableOpacity style={styles.centerBtn} onPress={() => { videoRef.current?.seek(currentTime + settings.seekDuration); showControlsUI(); }}>
-              <MaterialIcons name="forward-10" size={48} color="#fff" />
-              <Text style={styles.seekBtnText}>+{settings.seekDuration}s</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.bottomGradient}>
-          {isLive ? (
-            <View style={styles.liveContainer}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-          ) : (
-            <View style={styles.sliderContainer}>
-              <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-              <Slider
-                style={styles.slider} minimumValue={0} maximumValue={duration} value={currentTime}
-                minimumTrackTintColor="#E50914" maximumTrackTintColor="rgba(255, 255, 255, 0.3)" thumbTintColor="#E50914"
-                onSlidingStart={() => clearControlsTimeout()}
-                onSlidingComplete={(val) => { videoRef.current?.seek(val); showControlsUI(); }}
-              />
-              <Text style={styles.timeText}>{formatTime(duration)}</Text>
-            </View>
-          )}
-          <View style={styles.bottomRightControls}>
-            <TouchableOpacity style={styles.smallIconButton} onPress={() => {
+          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.bottomGradient}>
+            {isLive ? (
+              <View style={styles.liveContainer}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>LIVE</Text>
+              </View>
+            ) : (
+              <View style={styles.sliderContainer}>
+                <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+                <Slider
+                  style={styles.slider} minimumValue={0} maximumValue={duration} value={currentTime}
+                  minimumTrackTintColor="#E50914" maximumTrackTintColor="rgba(255, 255, 255, 0.3)" thumbTintColor="#E50914"
+                  onSlidingStart={() => clearControlsTimeout()}
+                  onSlidingComplete={(val) => { videoRef.current?.seek(val); showControlsUI(); }}
+                />
+                <Text style={styles.timeText}>{formatTime(duration)}</Text>
+              </View>
+            )}
+            <View style={styles.bottomRightControls}>
+              <TouchableOpacity style={styles.smallIconButton} onPress={() => {
                 setResizeMode(r => {
-                  return r === 'auto' ? 'contain' : 
-                         r === 'contain' ? 'cover' : 
-                         r === 'cover' ? 'stretch' : 'auto';
+                  return r === 'auto' ? 'contain' :
+                    r === 'contain' ? 'cover' :
+                      r === 'cover' ? 'stretch' : 'auto';
                 });
                 showControlsUI();
               }}>
                 <MaterialIcons name={activeResizeMode === 'contain' ? 'aspect-ratio' : activeResizeMode === 'cover' ? 'crop-free' : activeResizeMode === 'stretch' ? 'settings-overscan' : 'auto-fix-normal'} size={24} color="#fff" />
               </TouchableOpacity>
-            <TouchableOpacity style={styles.smallIconButton} onPress={() => {
-              ScreenOrientation.lockAsync(isLandscape ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE);
-              setIsLandscape(!isLandscape); showControlsUI();
-            }}>
-              <MaterialIcons name={isLandscape ? 'screen-lock-portrait' : 'screen-rotation'} size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-      </Animated.View>
+              <TouchableOpacity style={styles.smallIconButton} onPress={() => {
+                ScreenOrientation.lockAsync(isLandscape ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE);
+                setIsLandscape(!isLandscape); showControlsUI();
+              }}>
+                <MaterialIcons name={isLandscape ? 'screen-lock-portrait' : 'screen-rotation'} size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </Animated.View>
       )}
     </View>
   );
@@ -940,4 +941,5 @@ const styles = StyleSheet.create({
   trackBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   trackText: { color: '#fff', fontSize: 16, marginLeft: 15 },
   noTracksText: { color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', marginTop: 20 },
+  emptyText: { color: 'rgba(255,255,255,0.5)', fontSize: 16, textAlign: 'center', marginTop: 40, fontStyle: 'italic' },
 });

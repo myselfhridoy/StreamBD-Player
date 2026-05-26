@@ -1,6 +1,6 @@
-import { fetchWithTimeout, STREAMBD_USER_AGENT, parseUrlHeaders, runBatched } from "./m3uParser";
 import { resolveInfinityFreeToken } from "./infinityfree";
 import { jsdecode } from "./jsdecode";
+import { fetchWithTimeout, parseUrlHeaders, runBatched, STREAMBD_USER_AGENT } from "./m3uParser";
 
 export const tokenResolveCache = new Map<string, { data: { url: string; headers?: Record<string, string>; drm?: any } | null; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -33,7 +33,7 @@ export function getStreamHeaders(baseUrl: string, originalHeaders?: Record<strin
     const u = new URL(baseUrl);
     streamHeaders["Referer"] = u.origin + "/";
     streamHeaders["Origin"] = u.origin;
-  } catch {}
+  } catch { }
   return streamHeaders;
 }
 
@@ -74,8 +74,8 @@ export function extractDrmFromText(text: string): any | undefined {
   if (!text) return undefined;
 
   // 1. Check for Widevine / Playready
-  const widevineUrlMatch = text.match(/(?:widevine|licenseUrl|licenseServer)[a-zA-Z0-9_]*\s*[:=]\s*['"](https?:\/\/[^'"]+)['"]/i) || 
-                           text.match(/['"]com\.widevine\.alpha['"]\s*:\s*['"](https?:\/\/[^'"]+)['"]/i);
+  const widevineUrlMatch = text.match(/(?:widevine|licenseUrl|licenseServer)[a-zA-Z0-9_]*\s*[:=]\s*['"](https?:\/\/[^'"]+)['"]/i) ||
+    text.match(/['"]com\.widevine\.alpha['"]\s*:\s*['"](https?:\/\/[^'"]+)['"]/i);
   const playreadyUrlMatch = text.match(/['"]com\.microsoft\.playready['"]\s*:\s*['"](https?:\/\/[^'"]+)['"]/i);
 
   if (widevineUrlMatch) {
@@ -250,7 +250,7 @@ async function resolveTokenForUrlInternal(
 
       for (const line of lines) {
         if (!line || line.startsWith("#EXTM3U")) continue;
-        
+
         if (line.startsWith("#KODIPROP:inputstream.adaptive.license_type=")) {
           const type = line.split("=")[1]?.toLowerCase().trim();
           if (!drm) drm = {};
@@ -291,11 +291,11 @@ async function resolveTokenForUrlInternal(
         }
 
         if (line.startsWith("#EXTHTTP:")) {
-           try {
-             const h = JSON.parse(line.substring("#EXTHTTP:".length).trim());
-             Object.assign(streamHeaders, h);
-           } catch {}
-           continue;
+          try {
+            const h = JSON.parse(line.substring("#EXTHTTP:".length).trim());
+            Object.assign(streamHeaders, h);
+          } catch { }
+          continue;
         }
 
         if (!line.startsWith("#")) {
@@ -306,12 +306,12 @@ async function resolveTokenForUrlInternal(
         }
       }
       if (streamUrl) {
-         if (!streamUrl.startsWith('http')) {
-           // It's the actual HLS playlist with relative chunk/playlist URLs (not a wrapper M3U).
-           // Return the original PHP bypass URL so ExoPlayer (and player.tsx's fetch pre-flight) can follow the redirect natively.
-           return { url: bypass.url, headers: bypass.headers };
-         }
-         return { url: streamUrl, headers: Object.keys(streamHeaders).length > 0 ? streamHeaders : undefined, drm: foundDRM ? drm : undefined };
+        if (!streamUrl.startsWith('http')) {
+          // It's the actual HLS playlist with relative chunk/playlist URLs (not a wrapper M3U).
+          // Return the original PHP bypass URL so ExoPlayer (and player.tsx's fetch pre-flight) can follow the redirect natively.
+          return { url: bypass.url, headers: bypass.headers };
+        }
+        return { url: streamUrl, headers: Object.keys(streamHeaders).length > 0 ? streamHeaders : undefined, drm: foundDRM ? drm : undefined };
       }
     } else if (bypass && bypass.content) {
       // It's not M3U, maybe it's an HTML player page (like crichd or generic iframe)
