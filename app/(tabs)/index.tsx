@@ -1,11 +1,12 @@
 import Text from '../../components/Text';
-import React, { useState, useRef } from 'react';
-import { StyleSheet, TextInput, ScrollView, TouchableOpacity, View, Animated, Modal } from 'react-native';;
+import React, { useState, useRef, useCallback } from 'react';
+import { StyleSheet, TextInput, ScrollView, TouchableOpacity, View, Animated, Modal, BackHandler, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SideDrawer from '../../components/SideDrawer';
+import { clearTokenCache } from '../../utils/tokenParser';
 
 const OutlinedInput = ({ label, value, onChangeText, placeholder }: any) => {
   return (
@@ -44,6 +45,32 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        Alert.alert('Exit App', 'Are you sure you want to exit the app?', [
+          {
+            text: 'Cancel',
+            onPress: () => null,
+            style: 'cancel',
+          },
+          {
+            text: 'Exit',
+            onPress: () => {
+              clearTokenCache();
+              BackHandler.exitApp();
+            },
+          },
+        ]);
+        return true; // Prevent default back behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [])
+  );
 
   const handlePlay = () => {
     if (!mediaUrl || !mediaUrl.trim()) {

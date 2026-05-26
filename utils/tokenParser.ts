@@ -2,7 +2,12 @@ import { fetchWithTimeout, STREAMBD_USER_AGENT, parseUrlHeaders, runBatched } fr
 import { resolveInfinityFreeToken } from "./infinityfree";
 import { jsdecode } from "./jsdecode";
 
-export const tokenResolveCache = new Map<string, { url: string; headers?: Record<string, string>; drm?: any } | null>();
+export const tokenResolveCache = new Map<string, { data: { url: string; headers?: Record<string, string>; drm?: any } | null; timestamp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function clearTokenCache() {
+  tokenResolveCache.clear();
+}
 
 // --- Helpers ---
 
@@ -20,6 +25,16 @@ export function parseTokenId(tokenId: string | number | undefined): number {
   const n = Number(tokenId);
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.floor(n);
+}
+
+export function getStreamHeaders(baseUrl: string, originalHeaders?: Record<string, string>): Record<string, string> {
+  const streamHeaders = { ...(originalHeaders || {}) };
+  try {
+    const u = new URL(baseUrl);
+    streamHeaders["Referer"] = u.origin + "/";
+    streamHeaders["Origin"] = u.origin;
+  } catch {}
+  return streamHeaders;
 }
 
 // All stream extensions based on standard formats
@@ -135,7 +150,7 @@ function extractStreamFromHtml(html: string, tokenId?: string | number): string 
 
 export function parseTokenHandlerId(tokenUrl: string | undefined): number | null {
   if (!tokenUrl) return null;
-  const match = tokenUrl.trim().match(/^[/\\](\d+)$/);
+  const match = tokenUrl.trim().match(/^[/\\]?(\d+)$/);
   if (!match) return null;
   const id = Number(match[1]);
   return Number.isFinite(id) ? id : null;
@@ -172,7 +187,7 @@ export async function resolveTokenByHandler(
     if (streamUrl) {
       // For /3 (or generically), try to extract DRM
       const drm = handlerId === 3 ? extractDrmFromText(body) : undefined;
-      return { url: streamUrl, headers, drm };
+      return { url: streamUrl, headers: getStreamHeaders(baseUrl, headers), drm };
     }
 
     // Fallback: If no stream found, treat response as token string
@@ -189,6 +204,29 @@ export async function resolveTokenByHandler(
 }
 
 export async function resolveTokenForUrl(
+  baseUrl: string,
+  tokenUrl: string | undefined,
+  tokenId?: string | number,
+  headers?: Record<string, string>,
+  tokenMatch?: string,
+  tokenReplace?: string,
+): Promise<{ url: string; headers?: Record<string, string>; drm?: any } | null> {
+  if (!tokenUrl) return null;
+
+  const cacheKey = `${baseUrl}||${tokenUrl}||${String(tokenId ?? "")}||${tokenMatch ?? ""}||${tokenReplace ?? ""}`;
+  const cached = tokenResolveCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const result = await resolveTokenForUrlInternal(baseUrl, tokenUrl, tokenId, headers, tokenMatch, tokenReplace);
+  if (result) {
+    tokenResolveCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  }
+  return result;
+}
+
+async function resolveTokenForUrlInternal(
   baseUrl: string,
   tokenUrl: string | undefined,
   tokenId?: string | number,
@@ -268,7 +306,39 @@ export async function resolveTokenForUrl(
         }
       }
       if (streamUrl) {
+         if (!streamUrl.startsWith('http')) {
+           // It's the actual HLS playlist with relative chunk/playlist URLs (not a wrapper M3U).
+           // Return the original PHP bypass URL so ExoPlayer (and player.tsx's fetch pre-flight) can follow the redirect natively.
+           return { url: bypass.url, headers: bypass.headers };
+         }
          return { url: streamUrl, headers: Object.keys(streamHeaders).length > 0 ? streamHeaders : undefined, drm: foundDRM ? drm : undefined };
+      }
+    } else if (bypass && bypass.content) {
+      // It's not M3U, maybe it's an HTML player page (like crichd or generic iframe)
+      // 1. Try crichd extraction
+      const crichdRegex = /return\s*\(\s*\[(.*?)\]\.join\(/i;
+      const crichdMatch = crichdRegex.exec(bypass.content);
+      if (crichdMatch && crichdMatch[1]) {
+        const chars = crichdMatch[1].match(/["']([^"']*)["']/g);
+        if (chars) {
+          let src = chars.map((c: string) => c.slice(1, -1)).join('').replace(/\\\//g, '/');
+          if (tokenMatch && tokenReplace) src = src.replace(tokenMatch, tokenReplace);
+          return { url: src, headers: getStreamHeaders(baseUrl, bypass.headers) };
+        }
+      }
+
+      // 2. Try jsdecode extraction
+      const decodedResult = jsdecode(bypass.content);
+      if (decodedResult) {
+        let finalUrl = decodedResult.url;
+        if (tokenMatch && tokenReplace) finalUrl = finalUrl.replace(tokenMatch, tokenReplace);
+        return { url: finalUrl, headers: getStreamHeaders(baseUrl, bypass.headers), drm: decodedResult.drm };
+      }
+
+      // 3. Try generic HTML stream extraction
+      const extracted = extractStreamFromHtml(bypass.content, tokenId);
+      if (extracted) {
+        return { url: extracted, headers: getStreamHeaders(baseUrl, bypass.headers) };
       }
     }
     return bypass as any;
@@ -290,7 +360,7 @@ export async function resolveTokenForUrl(
         if (tokenMatch && tokenReplace) {
           finalUrl = finalUrl.replace(tokenMatch, tokenReplace);
         }
-        return { url: finalUrl, headers, drm: decodedResult.drm };
+        return { url: finalUrl, headers: getStreamHeaders(baseUrl, headers), drm: decodedResult.drm };
       }
       return null;
     } catch {
@@ -318,7 +388,7 @@ export async function resolveTokenForUrl(
           if (tokenMatch && tokenReplace) {
             src = src.replace(tokenMatch, tokenReplace);
           }
-          return { url: src, headers };
+          return { url: src, headers: getStreamHeaders(baseUrl, headers) };
         }
       }
       return null;
@@ -351,7 +421,7 @@ export async function resolveTokenForUrl(
         if (tokenMatch && tokenReplace) {
           src = src.replace(tokenMatch, tokenReplace);
         }
-        return { url: src, headers };
+        return { url: src, headers: getStreamHeaders(baseUrl, headers) };
       }
       return null;
     } catch {
@@ -359,13 +429,10 @@ export async function resolveTokenForUrl(
     }
   }
 
-  const cacheKey = `${baseUrl}||${tokenUrl}||${String(tokenId ?? "")}`;
-
   // 2. Handler ID logic (\1, \2)
   const handlerId = parseTokenHandlerId(tokenUrl);
   if (handlerId !== null) {
     const handled = await resolveTokenByHandler(baseUrl, handlerId, tokenId, headers);
-    tokenResolveCache.set(cacheKey, handled || null);
     return handled;
   }
 
@@ -395,7 +462,6 @@ export async function resolveTokenForUrl(
     const selectedUrl = extractStreamFromJson(trimmed, tokenId);
     if (selectedUrl) {
       const out = { url: selectedUrl, headers };
-      tokenResolveCache.set(cacheKey, out);
       return out;
     }
 
@@ -406,7 +472,6 @@ export async function resolveTokenForUrl(
       if (tokenVal && typeof tokenVal === "string") {
         const sep = baseUrl.includes("?") ? "&" : "?";
         const out = { url: baseUrl + sep + "token=" + encodeURIComponent(tokenVal), headers };
-        tokenResolveCache.set(cacheKey, out);
         return out;
       }
     } catch { }
@@ -415,12 +480,10 @@ export async function resolveTokenForUrl(
     if (trimmed.length > 0 && trimmed.length < 500 && !trimmed.includes("<html")) {
       const sep = baseUrl.includes("?") ? "&" : "?";
       const out = { url: baseUrl + sep + "token=" + encodeURIComponent(trimmed), headers };
-      tokenResolveCache.set(cacheKey, out);
       return out;
     }
   } catch { }
 
-  tokenResolveCache.set(cacheKey, null);
   return null;
 }
 

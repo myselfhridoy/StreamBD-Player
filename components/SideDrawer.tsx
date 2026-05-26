@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Modal, Animated, Dimensions, TouchableWithoutFeedback, Linking, Share, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Modal, Animated, Dimensions, TouchableWithoutFeedback, Linking, Share, ScrollView, BackHandler, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
+import { clearTokenCache } from '../utils/tokenParser';
 
 const { width, height } = Dimensions.get('window');
 
@@ -73,7 +74,13 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
     { icon: 'share', label: 'Share Our App', onPress: () => { onClose(); handleShare(); } },
     { icon: 'email', label: 'Email', onPress: () => { onClose(); handleEmail(); } },
     { icon: 'system-update', label: 'Update App', onPress: () => { onClose(); } },
-    { icon: 'exit-to-app', label: 'Exit', onPress: () => { onClose(); } },
+    { icon: 'exit-to-app', label: 'Exit', onPress: () => { 
+        onClose(); 
+        Alert.alert('Exit App', 'Are you sure you want to exit the app?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Exit', onPress: () => { clearTokenCache(); BackHandler.exitApp(); } },
+        ]);
+    } },
   ];
 
   return (

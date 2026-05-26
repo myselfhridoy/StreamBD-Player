@@ -52,6 +52,8 @@ export default function PlayerScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<'audio' | 'subs' | 'quality' | 'speed'>('audio');
   
+  const [playerError, setPlayerError] = useState<{title: string, message: string} | null>(null);
+
   // Overlay feedback
   const [overlayText, setOverlayText] = useState('');
   const overlayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -434,6 +436,7 @@ export default function PlayerScreen() {
     if (!channel) return;
     setIsBuffering(true);
     setIsReady(false);
+    setPlayerError(null);
     router.setParams({
       mediaUrl: channel.url,
       channelName: channel.name,
@@ -455,19 +458,21 @@ export default function PlayerScreen() {
   const handlePrevChannel = () => switchChannel(prevChannel());
 
   const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | null>(null);
+  const [resolvedHeaders, setResolvedHeaders] = useState<Record<string, string> | undefined>(undefined);
   const [resolvedDrm, setResolvedDrm] = useState<any>(undefined);
 
-  useEffect(() => {
-    const resolveUrl = async () => {
+  const performUrlResolution = async () => {
       if (!finalMediaUrl) {
         setResolvedMediaUrl(null);
         return;
       }
+      setPlayerError(null);
+      setIsBuffering(true);
+      
+      let currentUrl = finalMediaUrl;
+      let currentHeaders = { ...headers };
       
       try {
-        let currentUrl = finalMediaUrl;
-        let currentHeaders = { ...headers };
-        
         // 1. Resolve Token if present
         if (tokenUrl) {
           const res = await resolveCustomTokenUrl(
@@ -524,20 +529,23 @@ export default function PlayerScreen() {
         
         let targetUrl = res.url || currentUrl;
         
-        // If HEAD fails (some servers block it), try GET
-        if (!res.ok && res.status !== 405) {
+        // If HEAD fails (some servers block it or return 405/403), try GET
+        if (!res.ok) {
             const getRes = await fetch(currentUrl, { method: 'GET', headers: currentHeaders });
             targetUrl = getRes.url || currentUrl;
         }
 
         setResolvedMediaUrl(targetUrl);
+        setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
       } catch (e) {
-        console.log("Failed to resolve URL, falling back to original", e);
-        setResolvedMediaUrl(finalMediaUrl);
+        console.log("Failed to resolve URL, falling back to current", e);
+        setResolvedMediaUrl(currentUrl || finalMediaUrl);
+        setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
       }
-    };
-    
-    resolveUrl();
+  };
+
+  useEffect(() => {
+    performUrlResolution();
   }, [finalMediaUrl]);
 
   return (
@@ -567,7 +575,7 @@ export default function PlayerScreen() {
             ref={videoRef}
             source={{ 
               uri: resolvedMediaUrl, 
-              headers: Object.keys(headers).length > 0 ? headers : undefined, 
+              headers: resolvedHeaders !== undefined ? resolvedHeaders : (Object.keys(headers).length > 0 ? headers : undefined), 
               drm: resolvedDrm || drmConfig, 
               type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined 
             } as ReactVideoSource}
@@ -588,8 +596,30 @@ export default function PlayerScreen() {
           onPictureInPictureStatusChanged={(isActive) => setIsPiPActive(isActive.isActive)}
           onError={(error: any) => {
             console.log("Video Playback Error:", error);
-            showOverlayFeedback(`Playback Error: ${error.error?.errorString || error.error?.message || 'Unknown'}`);
             setIsBuffering(false);
+            
+            const errStr = error?.error?.errorString || '';
+            const stack = error?.error?.errorStackTrace || '';
+            const msg = error?.error?.message || '';
+
+            let title = 'Playback Error';
+            let message = errStr.replace('ExoPlaybackException: ', '').replace(/_/g, ' ') || msg || 'An unknown error occurred while playing the video.';
+
+            if (stack.includes('403') || errStr.includes('403') || msg.includes('403')) {
+              title = 'Access Denied (403)';
+              message = 'The server rejected the request. The stream token might be invalid or expired.';
+            } else if (stack.includes('404') || errStr.includes('404') || msg.includes('404')) {
+              title = 'Stream Not Found (404)';
+              message = 'The requested video stream could not be found.';
+            } else if (errStr.includes('ERROR_CODE_IO_BAD_HTTP_STATUS')) {
+              title = 'Bad HTTP Status';
+              message = 'The media server returned an invalid response.';
+            } else if (errStr.includes('ERROR_CODE_IO_NETWORK_CONNECTION_FAILED')) {
+              title = 'Network Error';
+              message = 'Failed to connect to the media server. Please check your internet connection.';
+            }
+
+            setPlayerError({ title, message });
           }}
           style={[styles.video, { opacity: isReady ? 1 : 0 }]}
           volume={1.0}
@@ -610,12 +640,36 @@ export default function PlayerScreen() {
         )}
 
         {/* Loading Overlay */}
-        {(isBuffering || !isReady || !resolvedMediaUrl) && (
+        {(isBuffering || !isReady || !resolvedMediaUrl) && !playerError && (
         <View style={styles.loadingOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#E50914" />
         </View>
       )}
       </View>
+
+      {/* Error Overlay */}
+      {playerError && (
+        <View style={styles.errorOverlayWrapper}>
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="error-outline" size={64} color="#E50914" style={{ marginBottom: 16 }} />
+            <Text style={styles.errorTitle}>{playerError.title}</Text>
+            <Text style={styles.errorMessage}>{playerError.message}</Text>
+            <View style={styles.errorButtons}>
+              <TouchableOpacity style={styles.errorBtn} onPress={() => router.back()}>
+                <MaterialIcons name="arrow-back" size={20} color="#fff" />
+                <Text style={styles.errorBtnText}>Go Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.errorBtn, styles.errorBtnPrimary]} onPress={() => {
+                setResolvedMediaUrl(null);
+                performUrlResolution();
+              }}>
+                <MaterialIcons name="refresh" size={20} color="#fff" />
+                <Text style={styles.errorBtnText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Touch interceptor for toggling controls */}
       <Pressable style={[StyleSheet.absoluteFill, { zIndex: 5 }]} onPress={toggleControls} />
@@ -700,6 +754,7 @@ export default function PlayerScreen() {
       )}
 
       {/* Custom Controls Overlay */}
+      {!playerError && (
       <Animated.View style={[styles.controlsOverlay, { opacity: fadeAnim }]} pointerEvents={showControls && !showSettings ? 'box-none' : 'none'}>
         <LinearGradient colors={['rgba(0,0,0,0.8)', 'transparent']} style={styles.topGradient}>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
@@ -774,6 +829,7 @@ export default function PlayerScreen() {
           </View>
         </LinearGradient>
       </Animated.View>
+      )}
     </View>
   );
 }
@@ -783,6 +839,14 @@ const styles = StyleSheet.create({
   videoContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', zIndex: 1 },
   video: { width: '100%', height: '100%' },
   loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  errorOverlayWrapper: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 50 },
+  errorContainer: { backgroundColor: 'rgba(20,20,25,0.95)', padding: 30, borderRadius: 16, alignItems: 'center', maxWidth: 400, width: '85%', borderWidth: 1, borderColor: 'rgba(229,9,20,0.3)' },
+  errorTitle: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+  errorMessage: { color: 'rgba(255,255,255,0.7)', fontSize: 16, textAlign: 'center', marginBottom: 25, lineHeight: 24 },
+  errorButtons: { flexDirection: 'row', gap: 15 },
+  errorBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, gap: 8 },
+  errorBtnPrimary: { backgroundColor: '#E50914' },
+  errorBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   feedbackOverlay: { position: 'absolute', top: '20%', alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.6)', padding: 15, borderRadius: 10, zIndex: 40 },
   feedbackText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
   controlsOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', justifyContent: 'space-between', zIndex: 20, elevation: 10 },

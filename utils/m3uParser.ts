@@ -100,9 +100,36 @@ export const parseM3U = (content: string): Channel[] => {
         logo: logoMatch ? logoMatch[1] : '',
         group: groupMatch ? groupMatch[1] : 'Uncategorized',
       };
-    } else if (line.startsWith('#EXTVLCOPT:http-user-agent=')) {
+    } else if (line.startsWith('#EXTVLCOPT:')) {
       if (currentChannel) {
-        currentChannel.userAgent = line.replace('#EXTVLCOPT:http-user-agent=', '').trim();
+        const opt = line.substring(11).trim();
+        if (opt.toLowerCase().startsWith('http-user-agent=')) {
+          currentChannel.userAgent = opt.substring(16).trim();
+        } else if (opt.toLowerCase().startsWith('http-referrer=') || opt.toLowerCase().startsWith('http-referer=')) {
+          currentChannel.httpReferer = opt.substring(opt.indexOf('=') + 1).trim();
+        } else if (opt.toLowerCase().startsWith('http-origin=')) {
+          currentChannel.origin = opt.substring(opt.indexOf('=') + 1).trim();
+        }
+      }
+    } else if (line.startsWith('#KODIPROP:inputstream.adaptive.license_type=')) {
+      if (currentChannel) {
+        const type = line.split('=')[1]?.trim().toLowerCase();
+        if (!currentChannel.drm) currentChannel.drm = {};
+        if (type?.includes('widevine')) currentChannel.drm.type = 'widevine';
+        else if (type?.includes('playready')) currentChannel.drm.type = 'playready';
+        else if (type?.includes('clearkey')) currentChannel.drm.type = 'clearkey';
+      }
+    } else if (line.startsWith('#KODIPROP:inputstream.adaptive.license_key=')) {
+      if (currentChannel) {
+        const key = line.substring(line.indexOf('=') + 1).trim();
+        if (!currentChannel.drm) currentChannel.drm = {};
+        const isRawClearKeyPair = /^[0-9a-fA-F]{32}:[0-9a-fA-F]{32}$/.test(key);
+        if (isRawClearKeyPair) {
+          currentChannel.drm.type = 'clearkey';
+          currentChannel.drm.rawKeyPair = key;
+        } else {
+          currentChannel.drm.licenseServer = key;
+        }
       }
     } else if (line.startsWith('#EXTHTTP:')) {
       if (currentChannel) {
