@@ -346,14 +346,33 @@ export default function PlayerScreen() {
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  let finalMediaUrl = (mediaUrl as string) || '';
   const headers: Record<string, string> = {};
+
+  if (finalMediaUrl.includes('|')) {
+    const parts = finalMediaUrl.split('|');
+    finalMediaUrl = parts[0].trim();
+    for (let i = 1; i < parts.length; i++) {
+      const headerPart = parts[i].trim();
+      const equalIndex = headerPart.indexOf('=');
+      if (equalIndex > -1) {
+        const key = headerPart.substring(0, equalIndex).trim().toLowerCase();
+        const value = headerPart.substring(equalIndex + 1).trim();
+        if (key === 'referer') headers['Referer'] = value;
+        else if (key === 'user-agent') headers['User-Agent'] = value;
+        else if (key === 'origin') headers['Origin'] = value;
+        else if (key === 'cookie') headers['Cookie'] = value;
+      }
+    }
+  }
+
   if (cookie) headers['Cookie'] = cookie as string;
   if (referer) headers['Referer'] = referer as string;
   if (origin) headers['Origin'] = origin as string;
   
   if (userAgent && userAgent !== 'Default') {
     headers['User-Agent'] = userAgent as string;
-  } else {
+  } else if (!headers['User-Agent']) {
     headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   }
   console.log("PLAYING MEDIA URL:", mediaUrl);
@@ -439,7 +458,7 @@ export default function PlayerScreen() {
       <View style={styles.videoContainer}>
         <Video
           ref={videoRef}
-          source={{ uri: (mediaUrl as string) || '', headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig, type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined } as ReactVideoSource}
+          source={{ uri: finalMediaUrl, headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig, type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined } as ReactVideoSource}
           controls={false}
           paused={paused}
           rate={playbackRate}

@@ -61,7 +61,31 @@ export const parseM3U = (content: string): Channel[] => {
     } else if (!line.startsWith('#')) {
       // This should be the URL line
       if (currentChannel) {
-        currentChannel.url = line;
+        if (line.includes('|')) {
+          const parts = line.split('|');
+          currentChannel.url = parts[0].trim();
+          
+          for (let i = 1; i < parts.length; i++) {
+            const headerPart = parts[i].trim();
+            const equalIndex = headerPart.indexOf('=');
+            if (equalIndex > -1) {
+              const key = headerPart.substring(0, equalIndex).trim().toLowerCase();
+              const value = headerPart.substring(equalIndex + 1).trim();
+              
+              if (key === 'referer') {
+                currentChannel.httpReferer = value;
+              } else if (key === 'user-agent') {
+                currentChannel.userAgent = value;
+              } else if (key === 'origin') {
+                currentChannel.origin = value;
+              } else if (key === 'cookie') {
+                currentChannel.cookie = value;
+              }
+            }
+          }
+        } else {
+          currentChannel.url = line.trim();
+        }
       }
     }
   }
