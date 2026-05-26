@@ -99,16 +99,21 @@ export default function FavoritesScreen() {
       pathname: '/player',
       params: { 
         mediaUrl: channel.url, 
-        cookie: channel.cookie || '', 
-        referer: '', 
-        origin: '', 
-        drmUrl: '', 
-        userAgent: channel.userAgent || 'Default', 
-        drmScheme: 'clearkey', 
+        cookie: channel.cookie || '',
+        referer: channel.httpReferer || '',
+        origin: channel.origin || '',
+        userAgent: channel.userAgent || 'Default',
+        drmUrl: channel.drm?.licenseServer || (channel.drm?.rawKeyPair || ''),
+        drmScheme: channel.drm?.type || 'clearkey',
         streamFormat: 'auto',
         channelName: channel.name,
         channelLogo: channel.logo,
-        channelGroup: channel.group
+        channelGroup: channel.group,
+        tokenUrl: channel.tokenUrl || '',
+        tokenMatch: channel.tokenMatch || '',
+        tokenReplace: channel.tokenReplace || '',
+        tokenId: channel.tokenId || '',
+        fromHome: 'false'
       }
     });
   }, [getFilteredFavorites, setPlaylist, router]);

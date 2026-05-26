@@ -153,15 +153,19 @@ export default function ChannelBrowserScreen() {
       params: { 
         mediaUrl: channel.url, 
         cookie: channel.cookie || '', 
-        referer: '', 
-        origin: '', 
-        drmUrl: '', 
-        userAgent: channel.userAgent || 'Default', 
-        drmScheme: 'clearkey', 
+        referer: channel.httpReferer || '', 
+        origin: channel.origin || '', 
+        userAgent: channel.userAgent || 'Default',
         streamFormat: 'auto',
         channelName: channel.name,
         channelLogo: channel.logo,
         channelGroup: channel.group,
+        tokenUrl: channel.tokenUrl || '',
+        tokenMatch: channel.tokenMatch || '',
+        tokenReplace: channel.tokenReplace || '',
+        tokenId: channel.tokenId ? String(channel.tokenId) : '',
+        drmScheme: channel.drm?.type || 'clearkey',
+        drmUrl: channel.drm?.licenseServer || (channel.drm?.rawKeyPair || ''),
         isLiveEvent: isLiveEvent === 'true' ? 'true' : 'false'
       }
     });

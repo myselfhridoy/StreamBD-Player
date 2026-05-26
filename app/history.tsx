@@ -46,11 +46,18 @@ export default function HistoryScreen() {
         cookie: item.cookie || '',
         referer: item.referer || '',
         origin: item.origin || '',
+        userAgent: item.userAgent || 'Default',
         drmUrl: item.drmUrl || '',
-        userAgent: item.userAgent || 'Default', 
         drmScheme: item.drmScheme || 'clearkey',
         streamFormat: item.streamFormat || 'auto',
-        fromHome: 'true'
+        channelName: item.name,
+        channelLogo: item.logo,
+        channelGroup: item.group,
+        tokenUrl: item.tokenUrl || '',
+        tokenMatch: item.tokenMatch || '',
+        tokenReplace: item.tokenReplace || '',
+        tokenId: item.tokenId || '',
+        fromHome: 'false'
       }
     });
   };

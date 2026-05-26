@@ -12,11 +12,12 @@ import * as Brightness from 'expo-brightness';
 import { VolumeManager } from 'react-native-volume-manager';
 import { useSettings } from './context/SettingsContext';
 import { usePlaylist } from './context/PlaylistContext';
+import { resolveCustomTokenUrl } from '../utils/tokenParser';
 
 export default function PlayerScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup, fromHome, isLiveEvent } = params;
+  const { mediaUrl, cookie, referer, origin, drmUrl, userAgent, drmScheme, streamFormat, channelName, channelLogo, channelGroup, fromHome, isLiveEvent, tokenUrl, tokenMatch, tokenReplace, tokenId } = params;
 
   const { settings } = useSettings();
   const { nextChannel, prevChannel } = usePlaylist();
@@ -97,7 +98,11 @@ export default function PlayerScreen() {
         drmUrl,
         userAgent,
         drmScheme,
-        streamFormat
+        streamFormat,
+        tokenUrl,
+        tokenMatch,
+        tokenReplace,
+        tokenId
       };
       
       // Remove duplicate
@@ -311,7 +316,15 @@ export default function PlayerScreen() {
   };
 
   const handleAudioTracks = (data: { audioTracks: any[] }) => {
-    if (data.audioTracks) setAudioTracks(data.audioTracks);
+    if (data.audioTracks) {
+      setAudioTracks(data.audioTracks);
+      if (selectedAudioTrack === undefined) {
+        const firstSelectable = data.audioTracks.findIndex((t: any) => t.selected);
+        if (firstSelectable !== -1) {
+          setSelectedAudioTrack(firstSelectable);
+        }
+      }
+    }
   };
 
   const handleTextTracks = (data: { textTracks: any[] }) => {
@@ -427,7 +440,13 @@ export default function PlayerScreen() {
       channelLogo: channel.logo || '',
       channelGroup: channel.group || 'CHANNELS',
       cookie: channel.cookie || '',
-      userAgent: channel.userAgent || 'Default'
+      userAgent: channel.userAgent || 'Default',
+      referer: channel.httpReferer || channel.referer || '',
+      origin: channel.origin || '',
+      tokenUrl: channel.tokenUrl || '',
+      tokenMatch: channel.tokenMatch || '',
+      tokenReplace: channel.tokenReplace || '',
+      tokenId: channel.tokenId ? String(channel.tokenId) : ''
     });
     showOverlayFeedback(`Switching to ${channel.name}`);
   };
@@ -436,6 +455,7 @@ export default function PlayerScreen() {
   const handlePrevChannel = () => switchChannel(prevChannel());
 
   const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | null>(null);
+  const [resolvedDrm, setResolvedDrm] = useState<any>(undefined);
 
   useEffect(() => {
     const resolveUrl = async () => {
@@ -445,19 +465,69 @@ export default function PlayerScreen() {
       }
       
       try {
-        // Pre-fetch the URL to resolve any HTTP 301/302 redirects
+        let currentUrl = finalMediaUrl;
+        let currentHeaders = { ...headers };
+        
+        // 1. Resolve Token if present
+        if (tokenUrl) {
+          const res = await resolveCustomTokenUrl(
+             currentUrl, 
+             tokenUrl as string, 
+             tokenId ? Number(tokenId) : undefined, 
+             currentHeaders, 
+             tokenMatch as string, 
+             tokenReplace as string
+          );
+          currentUrl = res.url;
+          if (res.headers) currentHeaders = { ...currentHeaders, ...res.headers };
+          
+          if (res.drm) {
+             let type = DRMType.WIDEVINE;
+             if (res.drm.type === 'playready') type = DRMType.PLAYREADY;
+             else if (res.drm.type === 'clearkey') type = DRMType.CLEARKEY;
+             
+             let licenseServer = res.drm.licenseServer || '';
+             if (type === DRMType.CLEARKEY && res.drm.rawKeyPair) {
+                try {
+                  const [kidHex, keyHex] = res.drm.rawKeyPair.split(':');
+                  const hexToBase64Url = (hex: string) => {
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+                    let b64 = '', i = 0;
+                    while (i < hex.length) {
+                      const b1 = parseInt(hex.substring(i, i + 2) || '00', 16);
+                      const b2 = parseInt(hex.substring(i + 2, i + 4) || '00', 16);
+                      const b3 = parseInt(hex.substring(i + 4, i + 6) || '00', 16);
+                      b64 += chars[(b1 >> 2) & 0x3f];
+                      b64 += chars[((b1 & 0x03) << 4) | ((b2 >> 4) & 0x0f)];
+                      if (i + 2 < hex.length) b64 += chars[((b2 & 0x0f) << 2) | ((b3 >> 6) & 0x03)];
+                      if (i + 4 < hex.length) b64 += chars[b3 & 0x3f];
+                      i += 6;
+                    }
+                    return b64;
+                  };
+                  licenseServer = JSON.stringify({
+                    keys: [{ kty: 'oct', k: hexToBase64Url(keyHex), kid: hexToBase64Url(kidHex) }],
+                    type: 'temporary'
+                  });
+                } catch(e) {}
+             }
+             setResolvedDrm({ type, licenseServer, headers: Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined });
+          }
+        }
+
+        // 2. Pre-fetch the URL to resolve any HTTP 301/302 redirects
         // This is crucial because ExoPlayer blocks HTTPS -> HTTP redirects by default
-        const res = await fetch(finalMediaUrl, {
+        const res = await fetch(currentUrl, {
           method: 'HEAD', // Try HEAD first to avoid downloading body
-          headers: headers
+          headers: currentHeaders
         });
         
-        let targetUrl = res.url || finalMediaUrl;
+        let targetUrl = res.url || currentUrl;
         
         // If HEAD fails (some servers block it), try GET
         if (!res.ok && res.status !== 405) {
-            const getRes = await fetch(finalMediaUrl, { method: 'GET', headers: headers });
-            targetUrl = getRes.url || finalMediaUrl;
+            const getRes = await fetch(currentUrl, { method: 'GET', headers: currentHeaders });
+            targetUrl = getRes.url || currentUrl;
         }
 
         setResolvedMediaUrl(targetUrl);
@@ -495,7 +565,12 @@ export default function PlayerScreen() {
         {resolvedMediaUrl ? (
           <Video
             ref={videoRef}
-            source={{ uri: resolvedMediaUrl, headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig, type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined } as ReactVideoSource}
+            source={{ 
+              uri: resolvedMediaUrl, 
+              headers: Object.keys(headers).length > 0 ? headers : undefined, 
+              drm: resolvedDrm || drmConfig, 
+              type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined 
+            } as ReactVideoSource}
           controls={false}
           paused={paused}
           rate={playbackRate}
@@ -511,7 +586,17 @@ export default function PlayerScreen() {
           onProgress={(data) => setCurrentTime(data.currentTime)}
           onBuffer={({ isBuffering }) => setIsBuffering(isBuffering)}
           onPictureInPictureStatusChanged={(isActive) => setIsPiPActive(isActive.isActive)}
+          onError={(error: any) => {
+            console.log("Video Playback Error:", error);
+            showOverlayFeedback(`Playback Error: ${error.error?.errorString || error.error?.message || 'Unknown'}`);
+            setIsBuffering(false);
+          }}
           style={[styles.video, { opacity: isReady ? 1 : 0 }]}
+          volume={1.0}
+          muted={false}
+          audioOutput="speaker"
+          ignoreSilentSwitch="ignore"
+          playInBackground={false}
           // Native Patches
           //@ts-ignore
           skipSilence={settings.skipSilence}
