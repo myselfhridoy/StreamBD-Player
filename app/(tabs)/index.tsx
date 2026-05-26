@@ -202,7 +202,7 @@ export default function HomeScreen() {
       </TVTouchable>
 
       {/* UserAgent Selection Modal */}
-      <Modal visible={showUAModal} transparent animationType="fade" onRequestClose={() => setShowUAModal(false)}>
+      <Modal visible={showUAModal} transparent animationType="none" onRequestClose={() => setShowUAModal(false)}>
         <TVTouchable style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowUAModal(false)}>
           <View style={styles.premiumModalContent}>
             <Text style={styles.premiumModalTitle}>Select UserAgent</Text>
@@ -233,7 +233,7 @@ export default function HomeScreen() {
       </Modal>
 
       {/* DRM Schema Selection Modal */}
-      <Modal visible={showDrmModal} transparent animationType="fade" onRequestClose={() => setShowDrmModal(false)}>
+      <Modal visible={showDrmModal} transparent animationType="none" onRequestClose={() => setShowDrmModal(false)}>
         <TVTouchable style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDrmModal(false)}>
           <View style={styles.premiumModalContent}>
             <Text style={styles.premiumModalTitle}>Select DRM Scheme</Text>
@@ -259,7 +259,7 @@ export default function HomeScreen() {
       </Modal>
 
       {/* Custom UA Modal */}
-      <Modal visible={showCustomUAModal} transparent animationType="fade">
+      <Modal visible={showCustomUAModal} transparent animationType="none">
         <View style={styles.modalOverlay}>
           <View style={styles.premiumModalContent}>
             <Text style={styles.premiumModalTitle}>Custom User Agent</Text>

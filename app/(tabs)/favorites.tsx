@@ -1,12 +1,12 @@
 import Text from '../../components/Text';
 import { TVTouchable } from '../../components/TVTouchable';
 
-import React, { useState, useEffect, memo, useCallback } from 'react';
-import { StyleSheet, View, FlatList, Image, Dimensions, TextInput } from 'react-native';
-import { useRouter, Stack, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { memo, useCallback, useState } from 'react';
+import { Dimensions, FlatList, Image, StyleSheet, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Channel } from '../../utils/m3uParser';
 import { usePlaylist } from '../context/PlaylistContext';
 
@@ -14,9 +14,9 @@ const { width } = Dimensions.get('window');
 const numColumns = Math.floor(width / 100);
 
 const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void, onLongPress: (url: string) => void }) => (
-  <TVTouchable 
-    style={styles.channelItem} 
-    onPress={() => onPress(item, index)} 
+  <TVTouchable
+    style={styles.channelItem}
+    onPress={() => onPress(item, index)}
     onLongPress={() => onLongPress(item.url)}
     underlayColor="rgba(255,255,255,0.1)"
   >
@@ -27,8 +27,8 @@ const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress }: { item:
         ) : (
           <MaterialIcons name="tv" size={40} color="#ccc" />
         )}
-        <TVTouchable 
-          style={styles.favoriteIcon} 
+        <TVTouchable
+          style={styles.favoriteIcon}
           onPress={() => onLongPress(item.url)}
         >
           <MaterialIcons name="star" size={20} color="#FFD700" />
@@ -91,7 +91,7 @@ export default function FavoritesScreen() {
 
   const getFilteredFavorites = () => {
     let filtered = favorites.filter(f => getCategory(f) === activeTab);
-    
+
     if (searchQuery.trim()) {
       filtered = filtered.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }
@@ -114,8 +114,8 @@ export default function FavoritesScreen() {
     setPlaylist(getFilteredFavorites(), index);
     router.push({
       pathname: '/player',
-      params: { 
-        mediaUrl: channel.url, 
+      params: {
+        mediaUrl: channel.url,
         cookie: channel.cookie || '',
         referer: channel.httpReferer || '',
         origin: channel.origin || '',
@@ -144,13 +144,13 @@ export default function FavoritesScreen() {
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 15) }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TVTouchable onPress={() => router.back()} style={styles.iconBtn}>
           <MaterialIcons name="arrow-back" size={28} color="#fff" />
         </TVTouchable>
-        
+
         {!isSearchActive ? (
           <Text style={styles.headerTitle}>Favourites</Text>
         ) : (
@@ -165,7 +165,7 @@ export default function FavoritesScreen() {
             />
           </View>
         )}
-        
+
         <TVTouchable onPress={() => {
           if (isSearchActive) setSearchQuery('');
           setIsSearchActive(!isSearchActive);
@@ -180,8 +180,8 @@ export default function FavoritesScreen() {
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         {['LIVE EVENTS', 'CHANNELS', 'VOD'].map((tab) => (
-          <TVTouchable 
-            key={tab} 
+          <TVTouchable
+            key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab as any)}
           >
@@ -255,12 +255,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 15,
     marginBottom: 15,
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center',
   },
   tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginRight: 10,
+    flex: 1, // Makes all tabs identically sized
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginHorizontal: 4,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
     borderColor: 'transparent',
@@ -273,6 +279,7 @@ const styles = StyleSheet.create({
     color: '#8a8aa3',
     fontSize: 14,
     fontFamily: 'Inter_SemiBold',
+    textAlign: 'center',
   },
   activeTabText: {
     color: '#fff',
