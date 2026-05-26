@@ -434,6 +434,41 @@ export default function PlayerScreen() {
   const handleNextChannel = () => switchChannel(nextChannel());
   const handlePrevChannel = () => switchChannel(prevChannel());
 
+  const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolveUrl = async () => {
+      if (!finalMediaUrl) {
+        setResolvedMediaUrl(null);
+        return;
+      }
+      
+      try {
+        // Pre-fetch the URL to resolve any HTTP 301/302 redirects
+        // This is crucial because ExoPlayer blocks HTTPS -> HTTP redirects by default
+        const res = await fetch(finalMediaUrl, {
+          method: 'HEAD', // Try HEAD first to avoid downloading body
+          headers: headers
+        });
+        
+        let targetUrl = res.url || finalMediaUrl;
+        
+        // If HEAD fails (some servers block it), try GET
+        if (!res.ok && res.status !== 405) {
+            const getRes = await fetch(finalMediaUrl, { method: 'GET', headers: headers });
+            targetUrl = getRes.url || finalMediaUrl;
+        }
+
+        setResolvedMediaUrl(targetUrl);
+      } catch (e) {
+        console.log("Failed to resolve URL, falling back to original", e);
+        setResolvedMediaUrl(finalMediaUrl);
+      }
+    };
+    
+    resolveUrl();
+  }, [finalMediaUrl]);
+
   return (
     <View 
       style={styles.container} 
@@ -456,9 +491,10 @@ export default function PlayerScreen() {
       }} />
       
       <View style={styles.videoContainer}>
-        <Video
-          ref={videoRef}
-          source={{ uri: finalMediaUrl, headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig, type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined } as ReactVideoSource}
+        {resolvedMediaUrl ? (
+          <Video
+            ref={videoRef}
+            source={{ uri: resolvedMediaUrl, headers: Object.keys(headers).length > 0 ? headers : undefined, drm: drmConfig, type: (streamFormat && streamFormat !== 'auto') ? streamFormat : undefined } as ReactVideoSource}
           controls={false}
           paused={paused}
           rate={playbackRate}
@@ -479,18 +515,24 @@ export default function PlayerScreen() {
           //@ts-ignore
           skipSilence={settings.skipSilence}
           enableTunneling={settings.enableTunneling}
+          progressUpdateInterval={1000}
         />
-      </View>
+        ) : (
+          <View style={[styles.loadingOverlay, { backgroundColor: '#000' }]}>
+            <ActivityIndicator size="large" color="#4F46E5" />
+          </View>
+        )}
 
-      {/* Touch interceptor for toggling controls */}
-      <Pressable style={[StyleSheet.absoluteFill, { zIndex: 5 }]} onPress={toggleControls} />
-
-      {/* Loading Indicator */}
-      {isBuffering && (
+        {/* Loading Overlay */}
+        {(isBuffering || !isReady || !resolvedMediaUrl) && (
         <View style={styles.loadingOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#E50914" />
         </View>
       )}
+      </View>
+
+      {/* Touch interceptor for toggling controls */}
+      <Pressable style={[StyleSheet.absoluteFill, { zIndex: 5 }]} onPress={toggleControls} />
 
       {/* Overlay Feedback Text */}
       {overlayText !== '' && (
