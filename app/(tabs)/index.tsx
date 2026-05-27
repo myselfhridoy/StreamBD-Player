@@ -3,7 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Image, StyleSheet, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, ScrollView, Image, StyleSheet, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '../../components/Text';
 import { TVTouchable, isTV } from '../../components/tv';
@@ -57,27 +57,17 @@ const CATEGORIES = [
 ];
 
 const MediaCard = React.memo(({ item, onPress, onFocusChange }: { item: MediaItem, onPress: (item: MediaItem) => void, onFocusChange: (item: MediaItem | null) => void }) => {
-  const [isFocused, setIsFocused] = useState(false);
-
   return (
     <TVTouchable
       onPress={() => onPress(item)}
-      onFocus={() => {
-        setIsFocused(true);
-        onFocusChange(item);
+      onFocus={() => onFocusChange(item)}
+      onBlur={() => onFocusChange(null)}
+      style={styles.cardWrapper}
+      focusedStyle={{
+        borderWidth: 2,
+        borderColor: Colors.light.tint,
+        transform: [{ scale: 1.05 }]
       }}
-      onBlur={() => {
-        setIsFocused(false);
-        onFocusChange(null);
-      }}
-      style={({ pressed }: any) => [
-        styles.cardWrapper,
-        {
-          transform: [{ scale: isFocused || pressed ? 1.05 : 1 }],
-          borderColor: isFocused ? Colors.light.tint : 'transparent',
-          borderWidth: isFocused ? 2 : 0,
-        }
-      ]}
     >
       <View style={styles.cardContainer}>
         <Image
@@ -167,8 +157,10 @@ export default function MediaScreen() {
       setFocusedHeroItem(item);
       setIsAutoRotate(false);
     } else {
-      setFocusedHeroItem(null);
-      setIsAutoRotate(true);
+      setTimeout(() => {
+        setFocusedHeroItem(prev => prev === null ? null : prev);
+        setIsAutoRotate(true);
+      }, 100);
     }
   }, []);
 
@@ -200,7 +192,6 @@ export default function MediaScreen() {
 
           <View style={styles.heroButtons}>
             <TVTouchable
-              hasTVPreferredFocus={true}
               onPress={() => handlePress(heroItem)}
               style={({ pressed }: any) => [
                 styles.playButton,
@@ -229,15 +220,14 @@ export default function MediaScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0A0A0A' : '#F5F5F5' }]}>
-      <FlatList
-        data={categories}
-        keyExtractor={(_, index) => index.toString()}
-        ListHeaderComponent={renderHero}
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         removeClippedSubviews={false}
-        renderItem={({ item: category }) => (
-          <View style={styles.rowContainer}>
+      >
+        {renderHero()}
+        {categories.map((category, index) => (
+          <View key={index.toString()} style={styles.rowContainer}>
             <Text style={[styles.rowTitle, { color: isDark ? '#FFF' : '#000' }]}>{category.title}</Text>
             <FlatList
               horizontal
@@ -252,8 +242,8 @@ export default function MediaScreen() {
               removeClippedSubviews={false}
             />
           </View>
-        )}
-      />
+        ))}
+      </ScrollView>
 
       {/* Transparent Netflix-style Header */}
       <LinearGradient

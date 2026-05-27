@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, Dimensions } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '../components/Text';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -9,7 +9,6 @@ import { AddonManager, StreamSource } from '../utils/addonManager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TVTouchable } from '../components/tv';
 
-const { width } = Dimensions.get('window');
 
 export default function SourcesScreen() {
   const { id, type, title, season, episode } = useLocalSearchParams();
@@ -102,7 +101,7 @@ export default function SourcesScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
-        <TVTouchable onPress={() => router.back()} style={styles.backBtn} hasTVPreferredFocus={true}>
+        <TVTouchable onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={26} color="#FFF" />
         </TVTouchable>
         <View style={styles.headerTextContainer}>
@@ -142,6 +141,7 @@ export default function SourcesScreen() {
           renderItem={renderSource}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={false}
         />
       )}
     </View>

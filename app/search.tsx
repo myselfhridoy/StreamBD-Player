@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, TextInput, FlatList, Image, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, StyleSheet, TextInput, FlatList, Image, ActivityIndicator, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '../components/Text';
 import { useRouter, Stack } from 'expo-router';
@@ -39,17 +39,17 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  let debounceTimer: ReturnType<typeof setTimeout>;
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const search = useCallback((text: string) => {
     setQuery(text);
-    clearTimeout(debounceTimer);
+    clearTimeout(debounceTimer.current);
     if (text.trim().length < 2) {
       setResults([]);
       setSearched(false);
       return;
     }
-    debounceTimer = setTimeout(async () => {
+    debounceTimer.current = setTimeout(async () => {
       setLoading(true);
       setSearched(true);
       try {
@@ -83,30 +83,30 @@ export default function SearchScreen() {
   const renderItem = ({ item }: { item: SearchResult }) => (
     <TVTouchable
       onPress={() => handlePress(item)}
-      style={({ pressed, focused }: any) => [
-        styles.card,
-        {
-          transform: [{ scale: focused || pressed ? 1.05 : 1 }],
-          borderColor: focused ? Colors.light.tint : 'transparent',
-          borderWidth: focused ? 2 : 0,
-        }
-      ]}
+      style={styles.cardWrapper}
+      focusedStyle={{
+        borderWidth: 2,
+        borderColor: Colors.light.tint,
+        transform: [{ scale: 1.05 }],
+      }}
     >
-      <Image
-        source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }}
-        style={styles.cardImage}
-        resizeMode="cover"
-      />
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle} numberOfLines={2}>
-          {item.title || item.name}
-        </Text>
-        <View style={styles.cardMeta}>
-          <MaterialIcons name="star" size={11} color="#F59E0B" />
-          <Text style={styles.cardRating}>{item.vote_average?.toFixed(1)}</Text>
-          <Text style={styles.cardYear}>
-            {(item.release_date || item.first_air_date || '').substring(0, 4)}
+      <View style={styles.cardInner}>
+        <Image
+          source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }}
+          style={styles.cardImage}
+          resizeMode="cover"
+        />
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {item.title || item.name}
           </Text>
+          <View style={styles.cardMeta}>
+            <MaterialIcons name="star" size={11} color="#F59E0B" />
+            <Text style={styles.cardRating}>{item.vote_average?.toFixed(1)}</Text>
+            <Text style={styles.cardYear}>
+              {(item.release_date || item.first_air_date || '').substring(0, 4)}
+            </Text>
+          </View>
         </View>
       </View>
     </TVTouchable>
@@ -129,7 +129,7 @@ export default function SearchScreen() {
             placeholderTextColor="#666"
             value={query}
             onChangeText={search}
-            autoFocus
+            autoFocus={!isTV}
             returnKeyType="search"
           />
           {query.length > 0 && (
@@ -162,6 +162,7 @@ export default function SearchScreen() {
           renderItem={renderItem}
           numColumns={NUM_COLUMNS}
           contentContainerStyle={styles.grid}
+          removeClippedSubviews={false}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -223,12 +224,15 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  card: {
+  cardWrapper: {
     width: CARD_WIDTH,
     marginHorizontal: CARD_MARGIN,
     marginBottom: 16,
     borderRadius: 10,
+  },
+  cardInner: {
     overflow: 'hidden',
+    borderRadius: 10,
     backgroundColor: '#1A1A2E',
   },
   cardImage: {

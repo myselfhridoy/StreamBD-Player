@@ -1,5 +1,5 @@
 import Text from '../../components/Text';
-import { TVTouchable } from '../../components/TVTouchable';
+import { TVTouchable } from '../../components/tv';
 
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, FlatList, ActivityIndicator, Image, TextInput } from 'react-native';
@@ -112,24 +112,19 @@ export default function CategoriesScreen() {
           <Text style={styles.headerTitle}>Categories</Text>
         ) : (
           <View style={styles.searchContainer}>
-            <Text style={{display:'none'}}></Text> 
-            {/* Using a regular React Native TextInput for search */}
-            <React.Fragment>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search categories..."
-                placeholderTextColor="#888"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoFocus
-              />
-            </React.Fragment>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search categories..."
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus={!isTV}
+            />
           </View>
         )}
         
         <TVTouchable 
           style={styles.headerIconBtn} 
-          hasTVPreferredFocus={true}
           onPress={() => {
             if (isSearchActive) setSearchQuery('');
             setIsSearchActive(!isSearchActive);
@@ -156,13 +151,15 @@ export default function CategoriesScreen() {
         </View>
       ) : (
         <FlatList
+          key={isTV ? 'tv' : 'mobile'}
           data={filteredCategories}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          numColumns={2}
+          numColumns={isTV ? 4 : 2}
           contentContainerStyle={styles.listContent}
           columnWrapperStyle={styles.columnWrapper}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={false}
         />
       )}
     </View>

@@ -32,6 +32,7 @@
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
+    "react-native-tvos": "^0.85.3-0",
     "react-native-video": "^6.19.2",
     "react-native-volume-manager": "^2.0.8",
     "react-native-web": "~0.21.0",

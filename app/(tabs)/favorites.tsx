@@ -4,7 +4,7 @@ import { TVTouchable, TVFlatList, getTVColumns } from '../../components/tv';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { memo, useCallback, useState, useRef, useEffect } from 'react';
+import { memo, useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import { Dimensions, FlatList, Image, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Channel } from '../../utils/m3uParser';
@@ -29,12 +29,9 @@ const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress }: { item:
         ) : (
           <MaterialIcons name="tv" size={40} color="#ccc" />
         )}
-        <TVTouchable
-          style={styles.favoriteIcon}
-          onPress={() => onLongPress(item.url)}
-        >
+        <View style={styles.favoriteIcon}>
           <MaterialIcons name="star" size={20} color="#FFD700" />
-        </TVTouchable>
+        </View>
       </View>
       <Text style={styles.channelName} numberOfLines={2} ellipsizeMode="tail">
         {item.name}
@@ -103,14 +100,14 @@ export default function FavoritesScreen() {
     return 'CHANNELS';
   };
 
-  const getFilteredFavorites = () => {
+  const displayedFavorites = useMemo(() => {
     let filtered = favorites.filter(f => getCategory(f) === activeTab);
 
     if (searchQuery.trim()) {
       filtered = filtered.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
     }
     return filtered;
-  };
+  }, [favorites, activeTab, searchQuery]);
 
   const handleChannelPress = useCallback((channel: Channel, index: number) => {
     // VOD items navigate to details screen
@@ -125,7 +122,7 @@ export default function FavoritesScreen() {
       return;
     }
 
-    setPlaylist(getFilteredFavorites(), index);
+    setPlaylist(displayedFavorites, index);
     router.push({
       pathname: '/player',
       params: {
@@ -147,13 +144,12 @@ export default function FavoritesScreen() {
         fromHome: 'false'
       }
     });
-  }, [getFilteredFavorites, setPlaylist, router]);
+  }, [displayedFavorites, setPlaylist, router]);
 
   const renderChannel = useCallback(({ item, index }: { item: Channel, index: number }) => (
     <MemoizedChannelItem item={item} index={index} onPress={handleChannelPress} onLongPress={removeFavorite} />
   ), [handleChannelPress, removeFavorite]);
 
-  const displayedFavorites = getFilteredFavorites();
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 15) }]}>
@@ -178,7 +174,7 @@ export default function FavoritesScreen() {
               placeholderTextColor="#888"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              autoFocus
+              autoFocus={!isTV}
             />
           </View>
         )}
@@ -199,7 +195,7 @@ export default function FavoritesScreen() {
         {['LIVE EVENTS', 'CHANNELS', 'VOD'].map((tab) => (
           <TVTouchable
             key={tab}
-            hasTVPreferredFocus={tab === 'LIVE EVENTS'}
+            hasTVPreferredFocus={tab === 'CHANNELS'}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab as any)}
           >
@@ -213,11 +209,13 @@ export default function FavoritesScreen() {
       {/* Content */}
       <TVFlatList
         data={displayedFavorites}
+        numColumns={numColumns}
+        key={numColumns}
         keyExtractor={(item, index) => item.url + index}
         renderItem={renderChannel}
         contentContainerStyle={styles.gridContainer}
-        columnWrapperStyle={{ justifyContent: 'flex-start' }}
-        removeClippedSubviews={true}
+        columnWrapperStyle={numColumns > 1 ? { justifyContent: 'flex-start' } : undefined}
+        removeClippedSubviews={false}
         initialNumToRender={20}
         maxToRenderPerBatch={10}
         windowSize={5}
@@ -304,7 +302,7 @@ const styles = StyleSheet.create({
   gridContainer: {
     paddingHorizontal: 10,
     paddingTop: 10,
-    paddingBottom: 100,
+    paddingBottom: isTV ? 20 : 100,
     flexGrow: 1,
   },
   channelItem: {

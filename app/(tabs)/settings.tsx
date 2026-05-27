@@ -9,67 +9,70 @@ import { useDrawer } from '../context/DrawerContext';
 import { isTV } from '../../components/tv';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
-export default function SettingsScreen() {
-  const { settings, updateSetting } = useSettings();
-  const insets = useSafeAreaInsets();
-  const { openDrawer } = useDrawer();
-  const [showSeekModal, setShowSeekModal] = useState(false);
+const SectionHeader = ({ title }: { title: string }) => (
+  <Text style={styles.sectionHeader}>{title}</Text>
+);
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={styles.sectionHeader}>{title}</Text>
-  );
-
-  const SettingToggle = ({ 
-    title, description, value, onValueChange 
-  }: { 
-    title: string, description: string, value: boolean, onValueChange: (v: boolean) => void 
-  }) => (
-    <TVTouchable 
-      onPress={() => onValueChange(!value)}
-      style={({ focused, pressed }: any) => [
-        styles.settingRow,
-        {
-          borderColor: focused ? '#4F46E5' : 'rgba(255,255,255,0.05)',
-          backgroundColor: focused ? 'rgba(79, 70, 229, 0.1)' : '#1a1a24'
-        }
-      ]}
-    >
-      <View style={styles.settingTextContainer}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        <Text style={styles.settingDescription}>{description}</Text>
-      </View>
+const SettingToggle = ({ 
+  title, description, value, onValueChange 
+}: { 
+  title: string, description: string, value: boolean, onValueChange: (v: boolean) => void 
+}) => (
+  <TVTouchable 
+    onPress={() => onValueChange(!value)}
+    style={({ focused, pressed }: any) => [
+      styles.settingRow,
+      {
+        borderColor: focused ? '#4F46E5' : 'rgba(255,255,255,0.05)',
+        backgroundColor: focused ? 'rgba(79, 70, 229, 0.1)' : '#1a1a24'
+      }
+    ]}
+  >
+    <View style={styles.settingTextContainer}>
+      <Text style={styles.settingTitle}>{title}</Text>
+      <Text style={styles.settingDescription}>{description}</Text>
+    </View>
+    {isTV ? (
+      value && <MaterialIcons name="check" size={22} color="#3b82f6" />
+    ) : (
       <Switch
         trackColor={{ false: '#333', true: '#3b82f6' }}
         thumbColor={'#fff'}
         onValueChange={onValueChange}
         value={value}
-        disabled={isTV}
       />
-    </TVTouchable>
-  );
+    )}
+  </TVTouchable>
+);
 
-  const SettingClickable = ({ 
-    title, description, value, onPress 
-  }: { 
-    title: string, description: string, value?: string, onPress: () => void 
-  }) => (
-    <TVTouchable 
-      onPress={onPress}
-      style={({ focused, pressed }: any) => [
-        styles.settingRow,
-        {
-          borderColor: focused ? '#4F46E5' : 'rgba(255,255,255,0.05)',
-          backgroundColor: focused ? 'rgba(79, 70, 229, 0.1)' : '#1a1a24'
-        }
-      ]}
-    >
-      <View style={styles.settingTextContainer}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        <Text style={styles.settingDescription}>{description}</Text>
-      </View>
-      {value && <Text style={styles.settingValueText}>{value}</Text>}
-    </TVTouchable>
-  );
+const SettingClickable = ({ 
+  title, description, value, onPress 
+}: { 
+  title: string, description: string, value?: string, onPress: () => void 
+}) => (
+  <TVTouchable 
+    onPress={onPress}
+    style={({ focused, pressed }: any) => [
+      styles.settingRow,
+      {
+        borderColor: focused ? '#4F46E5' : 'rgba(255,255,255,0.05)',
+        backgroundColor: focused ? 'rgba(79, 70, 229, 0.1)' : '#1a1a24'
+      }
+    ]}
+  >
+    <View style={styles.settingTextContainer}>
+      <Text style={styles.settingTitle}>{title}</Text>
+      <Text style={styles.settingDescription}>{description}</Text>
+    </View>
+    {value && <Text style={styles.settingValueText}>{value}</Text>}
+  </TVTouchable>
+);
+
+export default function SettingsScreen() {
+  const { settings, updateSetting } = useSettings();
+  const insets = useSafeAreaInsets();
+  const { openDrawer } = useDrawer();
+  const [showSeekModal, setShowSeekModal] = useState(false);
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
@@ -85,35 +88,37 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <SectionHeader title="General" />
         
-        <SettingToggle 
-          title="Auto picture-in-picture"
-          description={settings.autoPiP ? "Automatically switch to PiP when the app is minimized" : "Do not automatically switch to PiP"}
-          value={settings.autoPiP}
-          onValueChange={(val) => updateSetting('autoPiP', val)}
-        />
-        
-
-        
-        <SettingToggle 
-          title="Always play in landscape mode"
-          description={settings.landscapeOnly ? "Always launch the player in landscape mode" : "Follow system orientation settings"}
-          value={settings.landscapeOnly}
-          onValueChange={(val) => updateSetting('landscapeOnly', val)}
-        />
-        
-        <SettingToggle 
-          title="Volume gesture control"
-          description={settings.volumeGesture ? "Swipe vertically on the right side to adjust volume" : "Gestures for volume are disabled"}
-          value={settings.volumeGesture}
-          onValueChange={(val) => updateSetting('volumeGesture', val)}
-        />
-        
-        <SettingToggle 
-          title="Brightness gesture control"
-          description={settings.brightnessGesture ? "Swipe vertically on the left side to adjust brightness" : "Gestures for brightness are disabled"}
-          value={settings.brightnessGesture}
-          onValueChange={(val) => updateSetting('brightnessGesture', val)}
-        />
+        {!isTV && (
+          <>
+            <SettingToggle 
+              title="Auto picture-in-picture"
+              description={settings.autoPiP ? "Automatically switch to PiP when the app is minimized" : "Do not automatically switch to PiP"}
+              value={settings.autoPiP}
+              onValueChange={(val) => updateSetting('autoPiP', val)}
+            />
+            
+            <SettingToggle 
+              title="Always play in landscape mode"
+              description={settings.landscapeOnly ? "Always launch the player in landscape mode" : "Follow system orientation settings"}
+              value={settings.landscapeOnly}
+              onValueChange={(val) => updateSetting('landscapeOnly', val)}
+            />
+            
+            <SettingToggle 
+              title="Volume gesture control"
+              description={settings.volumeGesture ? "Swipe vertically on the right side to adjust volume" : "Gestures for volume are disabled"}
+              value={settings.volumeGesture}
+              onValueChange={(val) => updateSetting('volumeGesture', val)}
+            />
+            
+            <SettingToggle 
+              title="Brightness gesture control"
+              description={settings.brightnessGesture ? "Swipe vertically on the left side to adjust brightness" : "Gestures for brightness are disabled"}
+              value={settings.brightnessGesture}
+              onValueChange={(val) => updateSetting('brightnessGesture', val)}
+            />
+          </>
+        )}
         
         <SettingToggle 
           title="Resume playing"
@@ -131,17 +136,23 @@ export default function SettingsScreen() {
 
 
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: isTV ? 20 : 100 }} />
       </ScrollView>
 
       {/* Seek Duration Modal */}
-      <Modal visible={showSeekModal} transparent animationType="fade">
+      <Modal 
+        visible={showSeekModal} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setShowSeekModal(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Seek duration</Text>
             {[5, 10, 15, 30, 60].map((sec) => (
               <TVTouchable 
                 key={sec} 
+                hasTVPreferredFocus={settings.seekDuration === sec}
                 style={styles.modalOption}
                 onPress={() => { updateSetting('seekDuration', sec); setShowSeekModal(false); }}
               >

@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import SideDrawer from '../../components/SideDrawer';
+import { isTV } from '../../components/tv';
+
+import { BackHandler } from 'react-native';
 
 interface DrawerContextType {
   openDrawer: () => void;
@@ -12,34 +15,24 @@ const DrawerContext = createContext<DrawerContextType | undefined>(undefined);
 export function DrawerProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Android TV: Back button দিয়ে drawer close
   useEffect(() => {
-    let tvEventHandler: any;
-    try {
-      const { default: TVEventHandler } = require('react-native/Libraries/Components/AppleTV/TVEventHandler');
-      tvEventHandler = new TVEventHandler();
-      tvEventHandler.enable(null, (cmp: any, evt: any) => {
-        if (evt && (evt.eventType === 'menu' || evt.eventKeyCode === 82)) {
-          setIsOpen(prev => !prev);
-        }
-      });
-    } catch (e) {
-      // TVEventHandler might not be available
-    }
-    return () => {
-      if (tvEventHandler) {
-        try { tvEventHandler.disable(); } catch (e) {}
-      }
-    };
-  }, []);
+    if (!isTV || !isOpen) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setIsOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [isOpen]);
 
   return (
     <DrawerContext.Provider value={{
-      openDrawer: () => setIsOpen(true),
+      openDrawer: () => { if (!isTV) setIsOpen(true); },
       closeDrawer: () => setIsOpen(false),
       isDrawerOpen: isOpen,
     }}>
       {children}
-      <SideDrawer visible={isOpen} onClose={() => setIsOpen(false)} />
+      {!isTV && <SideDrawer visible={isOpen} onClose={() => setIsOpen(false)} />}
     </DrawerContext.Provider>
   );
 }

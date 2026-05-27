@@ -7,8 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TVTouchable } from '../components/TVTouchable';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BlurView } from 'expo-blur';
-
-const { width, height } = Dimensions.get('window');
+import { isTV } from '../components/tv';
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -41,6 +40,40 @@ export default function OnboardingScreen() {
     }
   };
 
+  const featureRows = (
+    <>
+      <View style={styles.featureRow}>
+        <View style={styles.iconBox}>
+          <MaterialIcons name="tv" size={28} color="#4F46E5" />
+        </View>
+        <View style={styles.featureTextContainer}>
+          <Text style={styles.featureTitle}>Watch Live TV</Text>
+          <Text style={styles.featureDesc}>Enjoy your favorite live channels, movies, and series with seamless playback.</Text>
+        </View>
+      </View>
+
+      <View style={styles.featureRow}>
+        <View style={styles.iconBox}>
+          <MaterialIcons name="high-quality" size={28} color="#E50914" />
+        </View>
+        <View style={styles.featureTextContainer}>
+          <Text style={styles.featureTitle}>4K HDR Support</Text>
+          <Text style={styles.featureDesc}>Experience true cinematic quality with our advanced device decoder support.</Text>
+        </View>
+      </View>
+
+      <View style={styles.featureRow}>
+        <View style={styles.iconBox}>
+          <MaterialIcons name="playlist-add" size={28} color="#10B981" />
+        </View>
+        <View style={styles.featureTextContainer}>
+          <Text style={styles.featureTitle}>Custom Playlists</Text>
+          <Text style={styles.featureDesc}>Easily connect your own IPTV playlists using Network sources.</Text>
+        </View>
+      </View>
+    </>
+  );
+
   return (
     <LinearGradient colors={['#1a0b2e', '#050505']} style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -54,40 +87,16 @@ export default function OnboardingScreen() {
         </View>
         
         {/* Features Glassmorphism Card */}
-        <View style={{ borderRadius: 24, overflow: 'hidden', marginVertical: 40, width: '100%', maxWidth: 400 }}>
-          <BlurView intensity={30} tint="dark" style={styles.glassCard}>
-            
-            <View style={styles.featureRow}>
-              <View style={styles.iconBox}>
-                <MaterialIcons name="tv" size={28} color="#4F46E5" />
-              </View>
-              <View style={styles.featureTextContainer}>
-                <Text style={styles.featureTitle}>Watch Live TV</Text>
-                <Text style={styles.featureDesc}>Enjoy your favorite live channels, movies, and series with seamless playback.</Text>
-              </View>
+        <View style={{ borderRadius: 24, overflow: 'hidden', marginVertical: 40, width: '100%', maxWidth: isTV ? 900 : 600 }}>
+          {isTV ? (
+            <View style={[styles.glassCard, { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+              {featureRows}
             </View>
-
-            <View style={styles.featureRow}>
-              <View style={styles.iconBox}>
-                <MaterialIcons name="high-quality" size={28} color="#E50914" />
-              </View>
-              <View style={styles.featureTextContainer}>
-                <Text style={styles.featureTitle}>4K HDR Support</Text>
-                <Text style={styles.featureDesc}>Experience true cinematic quality with our advanced device decoder support.</Text>
-              </View>
-            </View>
-
-            <View style={styles.featureRow}>
-              <View style={styles.iconBox}>
-                <MaterialIcons name="playlist-add" size={28} color="#10B981" />
-              </View>
-              <View style={styles.featureTextContainer}>
-                <Text style={styles.featureTitle}>Custom Playlists</Text>
-                <Text style={styles.featureDesc}>Easily connect your own IPTV playlists using Network sources.</Text>
-              </View>
-            </View>
-
-          </BlurView>
+          ) : (
+            <BlurView intensity={30} tint="dark" style={styles.glassCard}>
+              {featureRows}
+            </BlurView>
+          )}
         </View>
 
         {/* Get Started Button */}
@@ -95,7 +104,7 @@ export default function OnboardingScreen() {
           onPress={handleGetStarted}
           hasTVPreferredFocus={true}
           style={(state: any) => [
-            styles.getStartedBtn,
+            styles.getStartedBtnWrapper,
             state.focused && styles.getStartedBtnFocused,
             state.pressed && { transform: [{ scale: 0.98 }] }
           ]}
@@ -124,7 +133,7 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '90%',
-    maxWidth: 600,
+    maxWidth: isTV ? 900 : 600,
     alignItems: 'center',
   },
   logoContainer: {
@@ -162,36 +171,37 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: isTV ? 22 : 18,
     fontFamily: 'Inter_Bold',
     marginBottom: 4,
   },
   featureDesc: {
     color: '#8a8aa3',
-    fontSize: 13,
+    fontSize: isTV ? 16 : 13,
     fontFamily: 'Inter_Medium',
     lineHeight: 18,
   },
-  getStartedBtn: {
+  getStartedBtnWrapper: {
     width: '100%',
-    maxWidth: 400,
-    height: 55,
+    maxWidth: isTV ? 600 : 400,
+    height: isTV ? 70 : 55,
     borderRadius: 12,
-    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
     marginTop: 10,
   },
   getStartedBtnFocused: {
-    transform: [{ scale: 1.05 }],
+    borderColor: '#fff',
     shadowColor: '#4F46E5',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 15,
     elevation: 10,
-    borderWidth: 2,
-    borderColor: '#fff',
   },
   btnGradient: {
     flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

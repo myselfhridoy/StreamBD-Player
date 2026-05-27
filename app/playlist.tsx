@@ -1,8 +1,8 @@
 import Text from '../components/Text';
-import { TVTouchable } from '../components/TVTouchable';
+import { TVTouchable, TVFlatList, isTV } from '../components/tv';
 
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';;
+import { StyleSheet, View, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,7 +67,7 @@ export default function PlaylistScreen() {
 
   const handleSelectFile = async () => {
     setShowDropdown(false);
-    alert('Select File requires a native rebuild to work. We will enable this later!');
+    Alert.alert('Notice', 'Select File requires a native rebuild to work. We will enable this later!');
     // try {
     //   const result = await DocumentPicker.getDocumentAsync({
     //     type: '*/*', 
@@ -146,16 +146,18 @@ export default function PlaylistScreen() {
   };
 
   const renderItem = ({ item }: { item: Playlist }) => (
-    <TVTouchable 
-      style={styles.playlistItem}
-      onPress={() => openChannelBrowser(item)}
-    >
-      <View style={styles.playlistItemContent}>
-        <Text style={styles.playlistItemName}>{item.name}</Text>
-        <Text style={styles.playlistItemUrl} numberOfLines={1} ellipsizeMode="tail">
-          {item.isLocal ? "Local File" : item.url}
-        </Text>
-      </View>
+    <View style={styles.playlistRow}>
+      <TVTouchable 
+        style={[styles.playlistItem, { flex: 1 }]}
+        onPress={() => openChannelBrowser(item)}
+      >
+        <View style={styles.playlistItemContent}>
+          <Text style={styles.playlistItemName}>{item.name}</Text>
+          <Text style={styles.playlistItemUrl} numberOfLines={1} ellipsizeMode="tail">
+            {item.isLocal ? "Local File" : item.url}
+          </Text>
+        </View>
+      </TVTouchable>
       <View style={styles.actionButtons}>
         <TVTouchable style={styles.iconButton} onPress={() => handleEdit(item)}>
           <MaterialIcons name="edit" size={22} color="#fff" />
@@ -164,7 +166,48 @@ export default function PlaylistScreen() {
           <MaterialIcons name="delete" size={22} color="#ff4444" />
         </TVTouchable>
       </View>
-    </TVTouchable>
+    </View>
+  );
+
+  const addModalContent = (
+    <View style={styles.modalContent}>
+      <Text style={styles.modalTitle}>Enter Playlist details</Text>
+      
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Enter playlist name</Text>
+        <TextInput
+          hasTVPreferredFocus={true}
+          style={styles.input}
+          value={playlistName}
+          onChangeText={setPlaylistName}
+          placeholder="My Playlist"
+          placeholderTextColor="#666"
+        />
+      </View>
+
+      <View style={[styles.inputContainer, { marginTop: 15 }]}>
+        <Text style={styles.inputLabel}>Enter playlist url</Text>
+        <TextInput
+          style={styles.input}
+          value={playlistUrl}
+          onChangeText={setPlaylistUrl}
+          placeholder="http://example.com/playlist.m3u"
+          placeholderTextColor="#666"
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+      </View>
+
+      <View style={styles.modalActions}>
+        <TVTouchable style={styles.modalActionBtn} onPress={() => setShowAddModal(false)}>
+          <Text style={styles.modalActionText}>CANCEL</Text>
+        </TVTouchable>
+        <TVTouchable style={styles.modalActionBtn} onPress={handleCreateOrUpdate}>
+          <Text style={styles.modalActionText}>{editingPlaylist ? "UPDATE" : "CREATE"}</Text>
+        </TVTouchable>
+      </View>
+    </View>
   );
 
   return (
@@ -189,7 +232,7 @@ export default function PlaylistScreen() {
           <Text style={styles.emptyText}>Please use M3U playlist with TV channels</Text>
         </View>
       ) : (
-        <FlatList
+        <TVFlatList
           data={playlists}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
@@ -223,48 +266,18 @@ export default function PlaylistScreen() {
         animationType="fade"
         onRequestClose={() => setShowAddModal(false)}
       >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Enter Playlist details</Text>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Enter playlist name</Text>
-              <TextInput
-                style={styles.input}
-                value={playlistName}
-                onChangeText={setPlaylistName}
-                placeholder="My Playlist"
-                placeholderTextColor="#666"
-              />
-            </View>
-
-            <View style={[styles.inputContainer, { marginTop: 15 }]}>
-              <Text style={styles.inputLabel}>Enter playlist url</Text>
-              <TextInput
-                style={styles.input}
-                value={playlistUrl}
-                onChangeText={setPlaylistUrl}
-                placeholder="http://example.com/playlist.m3u"
-                placeholderTextColor="#666"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={styles.modalActions}>
-              <TVTouchable style={styles.modalActionBtn} onPress={() => setShowAddModal(false)}>
-                <Text style={styles.modalActionText}>CANCEL</Text>
-              </TVTouchable>
-              <TVTouchable style={styles.modalActionBtn} onPress={handleCreateOrUpdate}>
-                <Text style={styles.modalActionText}>{editingPlaylist ? "UPDATE" : "CREATE"}</Text>
-              </TVTouchable>
-            </View>
+        {isTV ? (
+          <View style={styles.modalOverlay}>
+            {addModalContent}
           </View>
-        </KeyboardAvoidingView>
+        ) : (
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalOverlay}
+          >
+            {addModalContent}
+          </KeyboardAvoidingView>
+        )}
       </Modal>
 
       {/* Premium Delete Confirmation Modal */}
@@ -333,14 +346,18 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: 15,
     paddingTop: 10,
-    paddingBottom: 100,
+    paddingBottom: isTV ? 20 : 100,
+  },
+  playlistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   playlistItem: {
     flexDirection: 'row',
     backgroundColor: '#1a1a24',
     borderRadius: 12,
     padding: 15,
-    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,

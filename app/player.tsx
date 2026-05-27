@@ -1,5 +1,4 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { TVTouchable } from '../components/TVTouchable';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
@@ -8,14 +7,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View, findNodeHandle, AccessibilityInfo, TVEventHandler } from 'react-native';
+import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View, AccessibilityInfo, BackHandler } from 'react-native';
+
+const RN = require('react-native');
+const TVFocusGuideView = RN.TVFocusGuideView || View;
+
 import Video, { DRMType, OnLoadData, ReactVideoSource, SelectedTrackType, SelectedVideoTrackType, VideoRef } from 'react-native-video';
 import { VolumeManager } from 'react-native-volume-manager';
 import Text from '../components/Text';
 import { resolveCustomTokenUrl } from '../utils/tokenParser';
+import { hexToBase64Url } from '../utils/drm';
 import { usePlaylist } from './context/PlaylistContext';
 import { useSettings } from './context/SettingsContext';
-import { isTV } from '../components/tv';
+import { TVTouchable, isTV } from '../components/tv';
 ;
 
 export default function PlayerScreen() {
@@ -59,6 +63,7 @@ export default function PlayerScreen() {
   const [currentVodIndex, setCurrentVodIndex] = useState<number>(0);
 
   const [playerError, setPlayerError] = useState<{ title: string, message: string } | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   // Seek Debounce
   const seekTimeout = useRef<any>(null);
@@ -299,27 +304,7 @@ export default function PlayerScreen() {
     }
   };
 
-  const showControlsRef = useRef(showControls);
-  useEffect(() => {
-    showControlsRef.current = showControls;
-  }, [showControls]);
 
-  useEffect(() => {
-    let tvHandler: any = null;
-    if (isTV) {
-      tvHandler = new TVEventHandler();
-      tvHandler.enable(null, (cmp: any, evt: any) => {
-        if (evt && evt.eventType === 'select') {
-          if (!showControlsRef.current) {
-            showControlsUI();
-          }
-        }
-      });
-    }
-    return () => {
-      if (tvHandler) tvHandler.disable();
-    };
-  }, []);
 
   const playBtnRef = useRef<any>(null);
 
@@ -328,8 +313,7 @@ export default function PlayerScreen() {
     Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     if (isTV) {
       setTimeout(() => {
-        const handle = findNodeHandle(playBtnRef.current);
-        if (handle) AccessibilityInfo.setAccessibilityFocus(handle);
+        playBtnRef.current?.focus?.();
       }, 150);
     }
     startControlsTimeout();
@@ -467,8 +451,10 @@ export default function PlayerScreen() {
   } else if (!headers['User-Agent']) {
     headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   }
-  console.log("PLAYING MEDIA URL:", mediaUrl);
-  console.log("WITH HEADERS:", headers);
+  if (__DEV__) {
+    console.log("PLAYING MEDIA URL:", mediaUrl);
+    console.log("WITH HEADERS:", headers);
+  }
 
   let drmConfig = undefined;
   if (drmUrl) {
@@ -481,22 +467,6 @@ export default function PlayerScreen() {
       if (finalLicenseServer.includes(':') && !finalLicenseServer.startsWith('http')) {
         try {
           const [kidHex, keyHex] = finalLicenseServer.split(':');
-          const hexToBase64Url = (hex: string) => {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-            let b64 = '';
-            let i = 0;
-            while (i < hex.length) {
-              const b1 = parseInt(hex.substring(i, i + 2) || '00', 16);
-              const b2 = parseInt(hex.substring(i + 2, i + 4) || '00', 16);
-              const b3 = parseInt(hex.substring(i + 4, i + 6) || '00', 16);
-              b64 += chars[(b1 >> 2) & 0x3f];
-              b64 += chars[((b1 & 0x03) << 4) | ((b2 >> 4) & 0x0f)];
-              if (i + 2 < hex.length) b64 += chars[((b2 & 0x0f) << 2) | ((b3 >> 6) & 0x03)];
-              if (i + 4 < hex.length) b64 += chars[b3 & 0x3f];
-              i += 6;
-            }
-            return b64;
-          };
           const clearkeyJson = {
             keys: [{ kty: 'oct', k: hexToBase64Url(keyHex), kid: hexToBase64Url(kidHex) }],
             type: 'temporary'
@@ -558,101 +528,85 @@ export default function PlayerScreen() {
     showOverlayFeedback(`Switched to ${src.quality} (${src.provider})`);
   };
 
-  const performUrlResolution = async () => {
-    if (!finalMediaUrl) {
-      setResolvedMediaUrl(null);
-      return;
-    }
-    setPlayerError(null);
-    setIsBuffering(true);
-
-    let currentUrl = finalMediaUrl;
-    let currentHeaders = { ...headers };
-
-    try {
-      // 1. Resolve Token if present
-      if (tokenUrl) {
-        const res = await resolveCustomTokenUrl(
-          currentUrl,
-          tokenUrl as string,
-          tokenId ? Number(tokenId) : undefined,
-          currentHeaders,
-          tokenMatch as string,
-          tokenReplace as string
-        );
-        currentUrl = res.url;
-        if (res.headers) currentHeaders = { ...currentHeaders, ...res.headers };
-
-        if (res.drm) {
-          let type = DRMType.WIDEVINE;
-          if (res.drm.type === 'playready') type = DRMType.PLAYREADY;
-          else if (res.drm.type === 'clearkey') type = DRMType.CLEARKEY;
-
-          let licenseServer = res.drm.licenseServer || '';
-          if (type === DRMType.CLEARKEY && res.drm.rawKeyPair) {
-            try {
-              const [kidHex, keyHex] = res.drm.rawKeyPair.split(':');
-              const hexToBase64Url = (hex: string) => {
-                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-                let b64 = '', i = 0;
-                while (i < hex.length) {
-                  const b1 = parseInt(hex.substring(i, i + 2) || '00', 16);
-                  const b2 = parseInt(hex.substring(i + 2, i + 4) || '00', 16);
-                  const b3 = parseInt(hex.substring(i + 4, i + 6) || '00', 16);
-                  b64 += chars[(b1 >> 2) & 0x3f];
-                  b64 += chars[((b1 & 0x03) << 4) | ((b2 >> 4) & 0x0f)];
-                  if (i + 2 < hex.length) b64 += chars[((b2 & 0x0f) << 2) | ((b3 >> 6) & 0x03)];
-                  if (i + 4 < hex.length) b64 += chars[b3 & 0x3f];
-                  i += 6;
-                }
-                return b64;
-              };
-              licenseServer = JSON.stringify({
-                keys: [{ kty: 'oct', k: hexToBase64Url(keyHex), kid: hexToBase64Url(kidHex) }],
-                type: 'temporary'
-              });
-            } catch (e) { }
-          }
-          setResolvedDrm({ type, licenseServer, headers: Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined });
-        }
-      }
-
-      // Pre-fetch the URL to resolve any HTTP 301/302 redirects
-      // This is crucial because ExoPlayer blocks HTTPS -> HTTP redirects by default
-      // Optimization: Only do this for URLs that don't look like direct streams
-      const isDirectStream = /\.(m3u8|mp4|mkv|ts|flv|webm)(\?|$)/i.test(currentUrl);
-      
-      let targetUrl = currentUrl;
-      if (!isDirectStream || currentUrl.includes('.php')) {
-        try {
-          const res = await fetch(currentUrl, {
-            method: 'HEAD',
-            headers: currentHeaders
-          });
-          targetUrl = res.url || currentUrl;
-
-          if (!res.ok) {
-            const getRes = await fetch(currentUrl, { method: 'GET', headers: currentHeaders });
-            targetUrl = getRes.url || currentUrl;
-          }
-        } catch (e) {
-          console.log('Redirect resolution failed', e);
-        }
-      }
-
-      setResolvedMediaUrl(targetUrl);
-      setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
-    } catch (e) {
-      console.log("Failed to resolve URL, falling back to current", e);
-      setResolvedMediaUrl(currentUrl || finalMediaUrl);
-      setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
-    }
-  };
-
   useEffect(() => {
+    let cancelled = false;
+
+    const performUrlResolution = async () => {
+      if (!finalMediaUrl) {
+        if (!cancelled) setResolvedMediaUrl(null);
+        return;
+      }
+      setPlayerError(null);
+      setIsBuffering(true);
+
+      let currentUrl = finalMediaUrl;
+      let currentHeaders = { ...headers };
+
+      try {
+        if (tokenUrl) {
+          const res = await resolveCustomTokenUrl(
+            currentUrl,
+            tokenUrl as string,
+            tokenId ? Number(tokenId) : undefined,
+            currentHeaders,
+            tokenMatch as string,
+            tokenReplace as string
+          );
+          currentUrl = res.url;
+          if (res.headers) currentHeaders = { ...currentHeaders, ...res.headers };
+
+          if (res.drm) {
+            let type = DRMType.WIDEVINE;
+            if (res.drm.type === 'playready') type = DRMType.PLAYREADY;
+            else if (res.drm.type === 'clearkey') type = DRMType.CLEARKEY;
+
+            let licenseServer = res.drm.licenseServer || '';
+            if (type === DRMType.CLEARKEY && res.drm.rawKeyPair) {
+              try {
+                const [kidHex, keyHex] = res.drm.rawKeyPair.split(':');
+                licenseServer = JSON.stringify({
+                  keys: [{ kty: 'oct', k: hexToBase64Url(keyHex), kid: hexToBase64Url(kidHex) }],
+                  type: 'temporary'
+                });
+              } catch (e) { }
+            }
+            if (!cancelled) setResolvedDrm({ type, licenseServer, headers: Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined });
+          }
+        }
+
+        const isDirectStream = /\.(m3u8|mp4|mkv|ts|flv|webm)(\?|$)/i.test(currentUrl);
+        let targetUrl = currentUrl;
+        
+        if (!isDirectStream || currentUrl.includes('.php')) {
+          try {
+            const res = await fetch(currentUrl, { method: 'HEAD', headers: currentHeaders });
+            targetUrl = res.url || currentUrl;
+
+            if (!res.ok) {
+              const getRes = await fetch(currentUrl, { method: 'GET', headers: currentHeaders });
+              targetUrl = getRes.url || currentUrl;
+            }
+          } catch (e) {
+            if (__DEV__) console.log('Redirect resolution failed', e);
+          }
+        }
+
+        if (!cancelled) {
+          setResolvedMediaUrl(targetUrl);
+          setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
+        }
+      } catch (e) {
+        if (__DEV__) console.log("Failed to resolve URL, falling back to current", e);
+        if (!cancelled) {
+          setResolvedMediaUrl(currentUrl || finalMediaUrl);
+          setResolvedHeaders(Object.keys(currentHeaders).length > 0 ? currentHeaders : undefined);
+        }
+      }
+    };
+
     if (String(isVod) === 'true') {
       AsyncStorage.getItem('@current_vod_sources').then(data => {
-        if (data) {
+        if (data && !cancelled) {
           const parsed = JSON.parse(data);
           setVodSources(parsed);
           const idx = parseInt((vodSourceIndex as string) || '0');
@@ -660,80 +614,47 @@ export default function PlayerScreen() {
         }
       });
     }
+    
     performUrlResolution();
-  }, [finalMediaUrl]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [finalMediaUrl, retryKey]);
 
   // Unified TV State Ref for Event Handler
-  const stateRef = useRef({ showControls, showSettings, currentTime, paused, duration });
+  const stateRef = useRef({ showControls, showSettings, currentTime, paused, duration, seekDuration: settings.seekDuration });
   useEffect(() => {
-    stateRef.current = { showControls, showSettings, currentTime, paused, duration };
-  }, [showControls, showSettings, currentTime, paused, duration]);
+    stateRef.current = { showControls, showSettings, currentTime, paused, duration, seekDuration: settings.seekDuration };
+  }, [showControls, showSettings, currentTime, paused, duration, settings.seekDuration]);
 
-  const actionsRef = useRef({ showControlsUI, hideControls, startControlsTimeout, router, handleSeek, handlePrevChannel, handleNextChannel });
+  const actionsRef = useRef({ showControlsUI, hideControls, startControlsTimeout, router, handleSeek, handlePrevChannel, handleNextChannel, setPaused });
   useEffect(() => {
-    actionsRef.current = { showControlsUI, hideControls, startControlsTimeout, router, handleSeek, handlePrevChannel, handleNextChannel };
+    actionsRef.current = { showControlsUI, hideControls, startControlsTimeout, router, handleSeek, handlePrevChannel, handleNextChannel, setPaused };
   });
 
   // Global TV Event Handler for Player
   useEffect(() => {
     if (!isTV) return;
-    let tvEventHandler: any;
-    try {
-      const { default: TVEventHandler } = require('react-native/Libraries/Components/AppleTV/TVEventHandler');
-      tvEventHandler = new TVEventHandler();
-      tvEventHandler.enable(null, (cmp: any, evt: any) => {
-        if (!evt) return;
-        const key = evt.eventType || '';
-        const code = evt.eventKeyCode || 0;
-        const current = stateRef.current;
-        const actions = actionsRef.current;
-
-        // Settings Modal Open
-        if (current.showSettings) {
-          if (key === 'menu' || code === 82 || code === 4 || key === 'escape') {
-            setShowSettings(false);
-            actions.startControlsTimeout();
-          }
-          return; // Let native focus handle the rest inside settings
-        }
-
-        // Controls Hidden
-        if (!current.showControls) {
-          if (key === 'select' || key === 'playPause' || code === 23 || code === 66 || code === 85) {
-            actions.showControlsUI();
-          } else if (key === 'left' || code === 21) {
-            actions.showControlsUI();
-            actions.handleSeek(current.currentTime - settings.seekDuration, current.duration);
-          } else if (key === 'right' || code === 22) {
-            actions.showControlsUI();
-            actions.handleSeek(current.currentTime + settings.seekDuration, current.duration);
-          } else if (key === 'up' || code === 19) {
-            actions.handlePrevChannel();
-          } else if (key === 'down' || code === 20) {
-            actions.handleNextChannel();
-          } else if (key === 'menu' || code === 82 || code === 4 || key === 'escape') {
-            actions.router.back();
-          }
-        } 
-        // Controls Visible
-        else {
-          if (key === 'menu' || code === 82 || code === 4 || key === 'escape') {
-            actions.hideControls();
-          } else if (key === 'playPause') { // Dedicated play/pause key
-            setPaused(p => !p);
-            actions.showControlsUI(); // reset timeout
-          }
-        }
-      });
-    } catch (e) {
-      console.log('TVEventHandler init failed', e);
-    }
-    return () => {
-      if (tvEventHandler) {
-        try { tvEventHandler.disable(); } catch (e) {}
+    const backAction = () => {
+      const current = stateRef.current;
+      const actions = actionsRef.current;
+      if (current.showSettings) {
+        setShowSettings(false);
+        actions.startControlsTimeout();
+        return true;
+      }
+      if (!current.showControls) {
+        actions.router.back();
+        return true;
+      } else {
+        actions.hideControls();
+        return true;
       }
     };
-  }, [settings.seekDuration]);
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [isTV]);
 
   return (
     <View
@@ -741,7 +662,7 @@ export default function PlayerScreen() {
       {...panResponder.panHandlers}
       focusable={true}
       //@ts-ignore
-      onKeyDown={(Platform.OS === 'web' || (Platform.OS === 'android' && !Platform.isTV)) ? (e: any) => {
+      onKeyDown={(Platform.OS === 'web' || Platform.OS === 'android') ? (e: any) => {
         const key = e.nativeEvent.key;
         
         // Settings Open
@@ -871,7 +792,7 @@ export default function PlayerScreen() {
               </TVTouchable>
               <TVTouchable style={[styles.errorBtn, styles.errorBtnPrimary]} onPress={() => {
                 setResolvedMediaUrl(null);
-                performUrlResolution();
+                setRetryKey(k => k + 1);
               }}>
                 <MaterialIcons name="refresh" size={20} color="#fff" />
                 <Text style={styles.errorBtnText}>Retry</Text>
@@ -910,71 +831,73 @@ export default function PlayerScreen() {
                 </TVTouchable>
               ))}
             </View>
-            <ScrollView style={styles.settingsContent} showsVerticalScrollIndicator={false}>
-              {activeTab === 'audio' && (
-                <>
-                  {audioTracks.length === 0 && <Text style={styles.noTracksText}>No alternative audio tracks.</Text>}
-                  {audioTracks.map((track, i) => (
-                    <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedAudioTrack(track.index)}>
-                      <MaterialIcons name={selectedAudioTrack === track.index || (selectedAudioTrack === undefined && i === 0) ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
-                      <Text style={styles.trackText}>{track.language || track.title || `Track ${i + 1}`}</Text>
-                    </TVTouchable>
-                  ))}
-                </>
-              )}
-              {activeTab === 'subs' && (
-                <>
-                  <TVTouchable style={styles.trackBtn} onPress={() => setSelectedTextTrack(-1)}>
-                    <MaterialIcons name={selectedTextTrack === -1 ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
-                    <Text style={styles.trackText}>Off</Text>
-                  </TVTouchable>
-                  {textTracks.map((track, i) => (
-                    <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedTextTrack(track.index)}>
-                      <MaterialIcons name={selectedTextTrack === track.index ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
-                      <Text style={styles.trackText}>{track.language || track.title || `Subtitle ${i + 1}`}</Text>
-                    </TVTouchable>
-                  ))}
-                </>
-              )}
-              {activeTab === 'quality' && (
-                <>
-                  <TVTouchable style={styles.trackBtn} onPress={() => setSelectedVideoTrack(0)}>
-                    <MaterialIcons name={selectedVideoTrack === 0 ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
-                    <Text style={styles.trackText}>Auto</Text>
-                  </TVTouchable>
-                  {videoTracks.map((track, i) => (
-                    <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedVideoTrack(track.height)}>
-                      <MaterialIcons name={selectedVideoTrack === track.height ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
-                      <Text style={styles.trackText}>{track.height}p</Text>
-                    </TVTouchable>
-                  ))}
-                </>
-              )}
-              {activeTab === 'speed' && (
-                <>
-                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(speed => (
-                    <TVTouchable key={speed} style={styles.trackBtn} onPress={() => setPlaybackRate(speed)}>
-                      <MaterialIcons name={playbackRate === speed ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
-                      <Text style={styles.trackText}>{speed}x {speed === 1.0 ? '(Normal)' : ''}</Text>
-                    </TVTouchable>
-                  ))}
-                </>
-              )}
-              {activeTab === 'sources' && (
-                <>
-                  {vodSources.length > 0 ? (
-                    vodSources.map((src: any, index: number) => (
-                      <TVTouchable key={index} style={styles.trackBtn} onPress={() => { switchVodSource(index); setShowSettings(false); }}>
-                        <MaterialIcons name={currentVodIndex === index ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
-                        <Text style={styles.trackText}>{src.quality} - {src.provider}</Text>
+            <TVFocusGuideView autoFocus style={{ flex: 1 }}>
+              <ScrollView style={styles.settingsContent} showsVerticalScrollIndicator={false}>
+                {activeTab === 'audio' && (
+                  <>
+                    {audioTracks.length === 0 && <Text style={styles.noTracksText}>No alternative audio tracks.</Text>}
+                    {audioTracks.map((track, i) => (
+                      <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedAudioTrack(track.index)}>
+                        <MaterialIcons name={selectedAudioTrack === track.index || (selectedAudioTrack === undefined && i === 0) ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
+                        <Text style={styles.trackText}>{track.language || track.title || `Track ${i + 1}`}</Text>
                       </TVTouchable>
-                    ))
-                  ) : (
-                    <Text style={styles.emptyText}>No sources loaded</Text>
-                  )}
-                </>
-              )}
-            </ScrollView>
+                    ))}
+                  </>
+                )}
+                {activeTab === 'subs' && (
+                  <>
+                    <TVTouchable style={styles.trackBtn} onPress={() => setSelectedTextTrack(-1)}>
+                      <MaterialIcons name={selectedTextTrack === -1 ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
+                      <Text style={styles.trackText}>Off</Text>
+                    </TVTouchable>
+                    {textTracks.map((track, i) => (
+                      <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedTextTrack(track.index)}>
+                        <MaterialIcons name={selectedTextTrack === track.index ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
+                        <Text style={styles.trackText}>{track.language || track.title || `Subtitle ${i + 1}`}</Text>
+                      </TVTouchable>
+                    ))}
+                  </>
+                )}
+                {activeTab === 'quality' && (
+                  <>
+                    <TVTouchable style={styles.trackBtn} onPress={() => setSelectedVideoTrack(0)}>
+                      <MaterialIcons name={selectedVideoTrack === 0 ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
+                      <Text style={styles.trackText}>Auto</Text>
+                    </TVTouchable>
+                    {videoTracks.map((track, i) => (
+                      <TVTouchable key={i} style={styles.trackBtn} onPress={() => setSelectedVideoTrack(track.height)}>
+                        <MaterialIcons name={selectedVideoTrack === track.height ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
+                        <Text style={styles.trackText}>{track.height}p</Text>
+                      </TVTouchable>
+                    ))}
+                  </>
+                )}
+                {activeTab === 'speed' && (
+                  <>
+                    {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(speed => (
+                      <TVTouchable key={speed} style={styles.trackBtn} onPress={() => setPlaybackRate(speed)}>
+                        <MaterialIcons name={playbackRate === speed ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
+                        <Text style={styles.trackText}>{speed}x {speed === 1.0 ? '(Normal)' : ''}</Text>
+                      </TVTouchable>
+                    ))}
+                  </>
+                )}
+                {activeTab === 'sources' && (
+                  <>
+                    {vodSources.length > 0 ? (
+                      vodSources.map((src: any, index: number) => (
+                        <TVTouchable key={index} style={styles.trackBtn} onPress={() => { switchVodSource(index); setShowSettings(false); }}>
+                          <MaterialIcons name={currentVodIndex === index ? "radio-button-checked" : "radio-button-unchecked"} size={24} color="#E50914" />
+                          <Text style={styles.trackText}>{src.quality} - {src.provider}</Text>
+                        </TVTouchable>
+                      ))
+                    ) : (
+                      <Text style={styles.emptyText}>No sources loaded</Text>
+                    )}
+                  </>
+                )}
+              </ScrollView>
+            </TVFocusGuideView>
             <TVTouchable style={styles.closeSettingsBtn} onPress={() => { setShowSettings(false); startControlsTimeout(); }}>
               <MaterialIcons name="close" size={28} color="#fff" />
             </TVTouchable>

@@ -6,7 +6,6 @@ import React from 'react';
 import { isTV } from '../../components/tv';
 import TVSidebar from '../../components/TVSidebar';
 
-const { width } = Dimensions.get('window');
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof MaterialIcons>['name'];
@@ -54,7 +53,7 @@ export default function TabLayout() {
           shadowOpacity: 0.3,
           shadowRadius: 20,
         },
-        tabBarBackground: () => (
+        tabBarBackground: isTV ? undefined : () => (
           <BlurView 
             tint={isDark ? 'dark' : 'light'} 
             intensity={60} 

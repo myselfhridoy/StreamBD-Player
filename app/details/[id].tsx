@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { TVTouchable } from '../../components/TVTouchable';
+import { TVTouchable, isTV } from '../../components/tv';
 
-import { View, StyleSheet, ScrollView, Image, ActivityIndicator, Pressable, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, ActivityIndicator, FlatList, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '../../components/Text';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -191,7 +191,6 @@ export default function DetailsScreen() {
           {/* Play Button (Movie only) */}
           {!isTv && (
             <TVTouchable
-              hasTVPreferredFocus={true}
               onPress={() => handlePlay()}
               style={styles.playButton}
             >
@@ -234,11 +233,12 @@ export default function DetailsScreen() {
           {isTv && seasons.length > 0 && (
             <View style={styles.seasonsSection}>
               <Text style={styles.sectionTitle}>Seasons</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-                {seasons.map((s: any) => (
+              <FlatList
+                horizontal
+                data={seasons}
+                keyExtractor={(s) => s.season_number.toString()}
+                renderItem={({ item: s }) => (
                   <TVTouchable
-                    key={s.season_number}
-                    hasTVPreferredFocus={selectedSeason === s.season_number}
                     style={[styles.seasonChip, selectedSeason === s.season_number && styles.seasonChipActive]}
                     onPress={() => fetchEpisodes(s.season_number)}
                   >
@@ -246,8 +246,11 @@ export default function DetailsScreen() {
                       Season {s.season_number}
                     </Text>
                   </TVTouchable>
-                ))}
-              </ScrollView>
+                )}
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: 20 }}
+                removeClippedSubviews={false}
+              />
 
               {loadingEpisodes ? (
                 <ActivityIndicator color={Colors.light.tint} style={{ marginVertical: 20 }} />
@@ -291,7 +294,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0A' },
   loadingContainer: { flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center' },
   scrollContent: { paddingBottom: 40 },
-  heroContainer: { width: '100%', height: height * 0.5, position: 'relative' },
+  heroContainer: { width: '100%', height: isTV ? height * 0.65 : height * 0.5, position: 'relative' },
   heroImage: { width: '100%', height: '100%' },
   heroGradient: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '60%' },
   backButton: {

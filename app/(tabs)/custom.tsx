@@ -195,6 +195,15 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
+
+          {/* Standard Play Button for TV/Mobile */}
+          <TVTouchable
+            style={[styles.playButton, { marginTop: 20 }]}
+            onPress={handlePlay}
+          >
+            <MaterialIcons name="play-arrow" size={28} color="#000" />
+            <Text style={styles.playButtonText}>Play Stream</Text>
+          </TVTouchable>
         </BlurView>
       </ScrollView>
 
@@ -206,14 +215,7 @@ export default function HomeScreen() {
         </Animated.View>
       )}
 
-      {/* FAB Play Button */}
-      <TVTouchable
-        style={[styles.fab, { bottom: Math.max(insets.bottom + 80, 90) }]}
-        activeOpacity={0.8}
-        onPress={handlePlay}
-      >
-        <MaterialIcons name="play-arrow" size={32} color="#fff" />
-      </TVTouchable>
+
 
       {/* UserAgent Selection Modal */}
       <Modal visible={showUAModal} transparent animationType="none" onRequestClose={() => setShowUAModal(false)}>
@@ -431,18 +433,32 @@ const styles = StyleSheet.create({
   toastText: { color: '#fff', fontSize: 16, flex: 1 },
   fab: {
     position: 'absolute',
-    right: 20,
+    right: 25,
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#E50914',
+    backgroundColor: '#ff4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  playButton: {
+    backgroundColor: '#fff',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#E50914',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  playButtonText: {
+    color: '#000',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
   },
   modalOverlay: {
     flex: 1,

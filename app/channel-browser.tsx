@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseM3U, Channel } from '../utils/m3uParser';
 import { usePlaylist } from './context/PlaylistContext';
 import * as FileSystem from 'expo-file-system';
-import { TVFlatList, getTVColumns, TVTouchable } from '../components/tv';
+import { TVFlatList, getTVColumns, TVTouchable, isTV } from '../components/tv';
 
 const { width } = Dimensions.get('window');
 const numColumns = getTVColumns();
@@ -180,7 +180,7 @@ export default function ChannelBrowserScreen() {
       onLongPress={toggleFavorite}
       isFavorite={favoriteUrls.has(item.url)}
     />
-  ), [handleChannelPress, favoriteUrls]);
+  ), [handleChannelPress, favoriteUrls, toggleFavorite]);
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 15) }]}>
@@ -188,7 +188,7 @@ export default function ChannelBrowserScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TVTouchable onPress={() => router.back()} style={styles.iconBtn} hasTVPreferredFocus={true}>
+          <TVTouchable onPress={() => router.back()} style={styles.iconBtn}>
             <MaterialIcons name="arrow-back" size={28} color="#fff" />
           </TVTouchable>
           {!isSearchActive ? (
@@ -200,7 +200,7 @@ export default function ChannelBrowserScreen() {
               placeholderTextColor="#999"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              autoFocus
+              autoFocus={!isTV}
             />
           )}
         </View>
@@ -224,7 +224,7 @@ export default function ChannelBrowserScreen() {
             <MaterialIcons name="list" size={20} color="#fff" style={{ marginRight: 5 }} />
             <Text style={styles.choseBtnText}>Chose</Text>
           </TVTouchable>
-          <FlatList
+          <TVFlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             data={categories}
@@ -239,6 +239,7 @@ export default function ChannelBrowserScreen() {
               </TVTouchable>
             )}
             contentContainerStyle={{ paddingRight: 15 }}
+            removeClippedSubviews={false}
           />
         </View>
       )}
@@ -298,7 +299,7 @@ export default function ChannelBrowserScreen() {
                   placeholderTextColor="#999"
                   value={categorySearchQuery}
                   onChangeText={setCategorySearchQuery}
-                  autoFocus
+                  autoFocus={!isTV}
                 />
               )}
               <TVTouchable onPress={() => {
@@ -308,9 +309,10 @@ export default function ChannelBrowserScreen() {
                 <MaterialIcons name={isCategorySearchActive ? "close" : "search"} size={24} color="#fff" />
               </TVTouchable>
             </View>
-            <FlatList
+            <TVFlatList
               data={categories.filter(c => c.toLowerCase().includes(categorySearchQuery.toLowerCase()))}
               keyExtractor={item => item}
+              tvColumns={1}
               renderItem={({ item }) => (
                 <TVTouchable
                   style={styles.modalCategoryItem}

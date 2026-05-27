@@ -1,9 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { TVTouchable } from './TVTouchable';
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { Animated, BackHandler, Dimensions, Linking, Modal, ScrollView, Share, StyleSheet, Text, TouchableWithoutFeedback, View, Image } from 'react-native';
+const RN = require('react-native');
+const TVFocusGuideView = RN.TVFocusGuideView || View;
 import { clearTokenCache } from '../utils/tokenParser';
 
 const { width, height } = Dimensions.get('window');
@@ -17,12 +19,14 @@ const DRAWER_WIDTH = width * 0.75;
 
 export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
   const [showExitModal, setShowExitModal] = React.useState(false);
+  const [isRendered, setIsRendered] = useState(false);
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const router = useRouter();
 
   useEffect(() => {
     if (visible) {
+      setIsRendered(true);
       Animated.parallel([
         Animated.timing(translateX, {
           toValue: 0,
@@ -47,11 +51,20 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
           duration: 300,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        setIsRendered(false);
+      });
     }
   }, [visible]);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, onClose]);
 
   const handleShare = async () => {
     try {
@@ -67,7 +80,7 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
     Linking.openURL('mailto:support@streambd.com');
   };
 
-  const menuItems = [
+  const menuItems = useMemo(() => [
     { icon: 'home', label: 'Home', onPress: () => { onClose(); router.push('/'); } },
     { icon: 'dashboard', label: 'Categories', onPress: () => { onClose(); router.push('/categories'); } },
     { icon: 'cloud-download', label: 'Network', onPress: () => { onClose(); router.push('/custom'); } },
@@ -86,35 +99,41 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
         setShowExitModal(true);
       }
     },
-  ];
+  ], [onClose, router]);
+
+  if (!isRendered && !showExitModal) return null;
 
   return (
-    <Modal visible={visible} transparent={true} animationType="none" onRequestClose={onClose}>
-      <View style={styles.overlayContainer}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
-        </TouchableWithoutFeedback>
+    <>
+      <Modal visible={isRendered} transparent={true} animationType="none" onRequestClose={onClose}>
+        <View style={styles.overlayContainer}>
+          <TouchableWithoutFeedback onPress={onClose}>
+            <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
+          </TouchableWithoutFeedback>
 
-        <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
-          <View style={styles.header}>
-            <Image 
-              source={require('../assets/images/icon.png')} 
-              style={{ width: 200, height: 70, resizeMode: 'contain', marginBottom: 10 }} 
-            />
-            <Text style={styles.subtitle}>Best streaming experience!</Text>
-          </View>
+          <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
+            <View style={styles.header}>
+              <Image 
+                source={require('../assets/images/icon.png')} 
+                style={{ width: 200, height: 70, resizeMode: 'contain', marginBottom: 10 }} 
+              />
+              <Text style={styles.subtitle}>Best streaming experience!</Text>
+            </View>
 
-          <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
-            {menuItems.map((item, index) => (
-              <TVTouchable key={index} style={styles.menuItem} onPress={item.onPress}>
-                <MaterialIcons name={item.icon as any} size={24} color="#fff" style={styles.menuIcon} />
-                <Text style={styles.menuText}>{item.label}</Text>
-              </TVTouchable>
-            ))}
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        </Animated.View>
-      </View>
+            <TVFocusGuideView autoFocus style={{ flex: 1 }}>
+              <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
+                {menuItems.map((item) => (
+                  <TVTouchable key={item.label} style={styles.menuItem} onPress={item.onPress}>
+                    <MaterialIcons name={item.icon as any} size={24} color="#fff" style={styles.menuIcon} />
+                    <Text style={styles.menuText}>{item.label}</Text>
+                  </TVTouchable>
+                ))}
+                <View style={{ height: 40 }} />
+              </ScrollView>
+            </TVFocusGuideView>
+          </Animated.View>
+        </View>
+      </Modal>
 
       {/* Exit Confirmation Modal */}
       <Modal visible={showExitModal} transparent animationType="fade" onRequestClose={() => setShowExitModal(false)}>
@@ -136,7 +155,16 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
               </TVTouchable>
               <TVTouchable
                 style={[styles.exitBtn, styles.exitBtnConfirm]}
-                onPress={() => { setShowExitModal(false); onClose(); clearTokenCache(); BackHandler.exitApp(); }}
+                onPress={() => { 
+                  setShowExitModal(false); 
+                  onClose(); 
+                  try {
+                    clearTokenCache(); 
+                  } catch (e) {
+                    console.error('Error clearing token cache', e);
+                  }
+                  BackHandler.exitApp(); 
+                }}
               >
                 <Text style={styles.exitBtnConfirmText}>Exit</Text>
               </TVTouchable>
@@ -144,7 +172,7 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
           </View>
         </View>
       </Modal>
-    </Modal>
+    </>
   );
 }
 

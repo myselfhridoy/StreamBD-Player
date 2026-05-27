@@ -1,17 +1,35 @@
 import Text from '../components/Text';
-import { TVTouchable } from '../components/TVTouchable';
+import { TVTouchable, TVFlatList } from '../components/tv';
 
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, FlatList, Alert } from 'react-native';;
+import { StyleSheet, View, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+export interface HistoryItem {
+  url: string;
+  name?: string;
+  logo?: string;
+  group?: string;
+  cookie?: string;
+  referer?: string;
+  origin?: string;
+  userAgent?: string;
+  drmUrl?: string;
+  drmScheme?: string;
+  streamFormat?: string;
+  tokenUrl?: string;
+  tokenMatch?: string;
+  tokenReplace?: string;
+  tokenId?: string;
+}
+
 export default function HistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -26,21 +44,34 @@ export default function HistoryScreen() {
         setHistory(JSON.parse(data));
       }
     } catch (e) {
-      console.log('Failed to load history');
+      console.error('Failed to load history', e);
     }
   };
 
   const deleteItem = async (url: string) => {
-    try {
-      const newHistory = history.filter(item => item.url !== url);
-      setHistory(newHistory);
-      await AsyncStorage.setItem('streamHistory', JSON.stringify(newHistory));
-    } catch (e) {
-      console.log('Failed to delete history item');
-    }
+    Alert.alert(
+      'Delete',
+      'Remove this item from history?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const newHistory = history.filter(item => item.url !== url);
+              setHistory(newHistory);
+              await AsyncStorage.setItem('streamHistory', JSON.stringify(newHistory));
+            } catch (e) {
+              console.error('Failed to delete history item', e);
+            }
+          }
+        }
+      ]
+    );
   };
 
-  const playItem = (item: any) => {
+  const playItem = (item: HistoryItem) => {
     router.push({
       pathname: '/player',
       params: { 
@@ -64,7 +95,7 @@ export default function HistoryScreen() {
     });
   };
 
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item }: { item: HistoryItem }) => (
     <View style={styles.historyCard}>
       <TVTouchable style={styles.historyUrlBtn} onPress={() => playItem(item)}>
         <Text style={styles.historyText} numberOfLines={2} ellipsizeMode="tail">
@@ -87,9 +118,9 @@ export default function HistoryScreen() {
         <Text style={styles.headerTitle}>History</Text>
       </View>
 
-      <FlatList
+      <TVFlatList
         data={history}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item) => item.url}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
