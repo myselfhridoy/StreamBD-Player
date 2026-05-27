@@ -662,6 +662,8 @@ export default function PlayerScreen() {
       {...panResponder.panHandlers}
       focusable={true}
       //@ts-ignore
+      hasTVPreferredFocus={isTV && !showControls && !showSettings && !playerError}
+      //@ts-ignore
       onKeyDown={(Platform.OS === 'web' || Platform.OS === 'android') ? (e: any) => {
         const key = e.nativeEvent.key;
         
@@ -786,7 +788,7 @@ export default function PlayerScreen() {
             <Text style={styles.errorTitle}>{playerError.title}</Text>
             <Text style={styles.errorMessage}>{playerError.message}</Text>
             <View style={styles.errorButtons}>
-              <TVTouchable style={styles.errorBtn} onPress={() => router.back()}>
+              <TVTouchable hasTVPreferredFocus={isTV && !!playerError} style={styles.errorBtn} onPress={() => router.back()}>
                 <MaterialIcons name="arrow-back" size={20} color="#fff" />
                 <Text style={styles.errorBtnText}>Go Back</Text>
               </TVTouchable>
@@ -824,7 +826,7 @@ export default function PlayerScreen() {
             <View style={styles.settingsSidebar}>
               <Text style={styles.settingsHeader}>Settings</Text>
               {(String(isVod) === 'true' ? ['sources', 'audio', 'subs', 'quality', 'speed'] as const : ['audio', 'subs', 'quality', 'speed'] as const).map((tab, idx) => (
-                <TVTouchable key={tab} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
+                <TVTouchable key={tab} hasTVPreferredFocus={isTV && showSettings && idx === 0} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
                   <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
                     {tab === 'audio' ? 'Audio' : tab === 'subs' ? 'Subtitles' : tab === 'quality' ? 'Quality' : tab === 'sources' ? 'Sources' : 'Speed'}
                   </Text>
@@ -934,7 +936,7 @@ export default function PlayerScreen() {
                 <Text style={styles.seekBtnText}>-{settings.seekDuration}s</Text>
               </TVTouchable>
             )}
-            <TVTouchable ref={playBtnRef} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
+            <TVTouchable ref={playBtnRef} hasTVPreferredFocus={isTV && showControls && !showSettings && !playerError} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
               <MaterialIcons name={paused ? "play-arrow" : "pause"} size={64} color="#fff" />
             </TVTouchable>
             {!isLive && (

@@ -41,7 +41,13 @@ const OutlinedInput = ({ label, value, onChangeText, placeholder, hasTVPreferred
           onBlur={() => setIsFocused(false)}
         />
         {value ? (
-          <TVTouchable style={styles.rightActionBtn} onPress={handleClear}>
+          <TVTouchable 
+            style={(state: any) => [
+              styles.rightActionBtn,
+              state.focused && { backgroundColor: 'rgba(255,68,68,0.2)' }
+            ]} 
+            onPress={handleClear}
+          >
             <MaterialIcons name="clear" size={20} color="#ff4444" />
           </TVTouchable>
         ) : null}
@@ -73,14 +79,20 @@ export default function HomeScreen() {
 
   const uaBtnRef = useRef<any>(null);
   const drmBtnRef = useRef<any>(null);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
+    if (isInitialMount.current) return;
     if (!showUAModal && !showCustomUAModal && uaBtnRef.current) {
       setTimeout(() => uaBtnRef.current?.focus?.(), 100);
     }
   }, [showUAModal, showCustomUAModal]);
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     if (!showDrmModal && drmBtnRef.current) {
       setTimeout(() => drmBtnRef.current?.focus?.(), 100);
     }
@@ -156,13 +168,19 @@ export default function HomeScreen() {
                 <View style={styles.floatingLabelWrapper}>
                   <Text style={styles.floatingLabel}>UserAgent</Text>
                 </View>
-                <TVTouchable ref={uaBtnRef} onPress={() => setShowUAModal(true)}>
-                  <View style={[styles.outlinedInput, { justifyContent: 'center' }]}>
-                    <Text style={styles.dropdownValueText} numberOfLines={1}>
-                      {uaOptions.find(o => o.value === userAgent)?.label || 'Default'}
-                    </Text>
-                    <MaterialIcons name="arrow-drop-down" size={24} color="#A78BFA" style={styles.dropdownIcon} />
-                  </View>
+                <TVTouchable 
+                  ref={uaBtnRef} 
+                  onPress={() => setShowUAModal(true)}
+                  style={(state: any) => [
+                    styles.outlinedInput,
+                    { justifyContent: 'center' },
+                    state.focused && { borderColor: '#A78BFA', backgroundColor: 'rgba(255,255,255,0.1)' }
+                  ]}
+                >
+                  <Text style={styles.dropdownValueText} numberOfLines={1}>
+                    {uaOptions.find(o => o.value === userAgent)?.label || 'Default'}
+                  </Text>
+                  <MaterialIcons name="arrow-drop-down" size={24} color="#A78BFA" style={styles.dropdownIcon} />
                 </TVTouchable>
               </View>
             </View>
@@ -172,13 +190,19 @@ export default function HomeScreen() {
                 <View style={styles.floatingLabelWrapper}>
                   <Text style={styles.floatingLabel}>DrmScheme</Text>
                 </View>
-                <TVTouchable ref={drmBtnRef} onPress={() => setShowDrmModal(true)}>
-                  <View style={[styles.outlinedInput, { justifyContent: 'center' }]}>
-                    <Text style={styles.dropdownValueText} numberOfLines={1}>
-                      {drmOptions.find(o => o.value === drmScheme)?.label || 'ClearKey'}
-                    </Text>
-                    <MaterialIcons name="arrow-drop-down" size={24} color="#A78BFA" style={styles.dropdownIcon} />
-                  </View>
+                <TVTouchable 
+                  ref={drmBtnRef} 
+                  onPress={() => setShowDrmModal(true)}
+                  style={(state: any) => [
+                    styles.outlinedInput,
+                    { justifyContent: 'center' },
+                    state.focused && { borderColor: '#A78BFA', backgroundColor: 'rgba(255,255,255,0.1)' }
+                  ]}
+                >
+                  <Text style={styles.dropdownValueText} numberOfLines={1}>
+                    {drmOptions.find(o => o.value === drmScheme)?.label || 'ClearKey'}
+                  </Text>
+                  <MaterialIcons name="arrow-drop-down" size={24} color="#A78BFA" style={styles.dropdownIcon} />
                 </TVTouchable>
               </View>
             </View>
@@ -186,7 +210,11 @@ export default function HomeScreen() {
 
           {/* Standard Play Button for TV/Mobile */}
           <TVTouchable
-            style={[styles.playButton, { marginTop: 20 }]}
+            style={(state: any) => [
+              styles.playButton, 
+              { marginTop: 20 },
+              state.focused && { transform: [{ scale: 1.02 }], borderWidth: 2, borderColor: '#A78BFA' }
+            ]}
             onPress={handlePlay}
           >
             <MaterialIcons name="play-arrow" size={28} color="#000" />
