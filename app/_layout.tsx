@@ -3,8 +3,10 @@ import Text from '../components/Text';
 import { Stack } from 'expo-router';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { TextInput } from 'react-native';;
+import { useEffect, useState } from 'react';
+import { TextInput } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter, useSegments } from 'expo-router';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -59,12 +61,47 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const [isReady, setIsReady] = useState(false);
+  const [shouldShowOnboarding, setShouldShowOnboarding] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    async function checkOnboarding() {
+      try {
+        const value = await AsyncStorage.getItem('hasSeenOnboarding');
+        if (value === null) {
+          setShouldShowOnboarding(true);
+        }
+      } catch (e) {
+        console.error('Failed to check onboarding status', e);
+      } finally {
+        setIsReady(true);
+      }
+    }
+    checkOnboarding();
+  }, []);
+
+  useEffect(() => {
+    if (!isReady || hasRedirected) return;
+
+    if (shouldShowOnboarding) {
+      setTimeout(() => {
+        router.replace('/onboarding');
+      }, 10);
+    }
+    setHasRedirected(true);
+  }, [isReady, shouldShowOnboarding, hasRedirected]);
+
+  if (!isReady) return null;
 
   return (
     <SettingsProvider>
       <PlaylistProvider>
         <DrawerProvider>
           <Stack>
+            <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="player" options={{ headerShown: false }} />
             <Stack.Screen name="history" options={{ headerShown: false }} />

@@ -9,6 +9,8 @@ import { Dimensions, FlatList, Image, StyleSheet, TextInput, View } from 'react-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Channel } from '../../utils/m3uParser';
 import { usePlaylist } from '../context/PlaylistContext';
+import { useDrawer } from '../context/DrawerContext';
+import { isTV } from '../../components/tv';
 
 const { width } = Dimensions.get('window');
 const numColumns = getTVColumns();
@@ -45,6 +47,7 @@ export default function FavoritesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setPlaylist } = usePlaylist();
+  const { openDrawer } = useDrawer();
 
   const [favorites, setFavorites] = useState<Channel[]>([]);
   const [activeTab, setActiveTab] = useState<'LIVE EVENTS' | 'CHANNELS' | 'VOD'>('CHANNELS');
@@ -147,9 +150,11 @@ export default function FavoritesScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TVTouchable onPress={() => router.back()} style={styles.iconBtn}>
-          <MaterialIcons name="arrow-back" size={28} color="#fff" />
-        </TVTouchable>
+        {!isTV && (
+          <TVTouchable onPress={openDrawer} style={styles.iconBtn}>
+            <MaterialIcons name="menu" size={28} color="#fff" />
+          </TVTouchable>
+        )}
 
         {!isSearchActive ? (
           <Text style={styles.headerTitle}>Favourites</Text>

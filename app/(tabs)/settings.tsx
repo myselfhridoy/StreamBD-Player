@@ -2,13 +2,17 @@ import Text from '../../components/Text';
 import { TVTouchable } from '../../components/TVTouchable';
 
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Switch, Modal } from 'react-native';;
+import { StyleSheet, View, ScrollView, Switch, Modal } from 'react-native';
 import { useSettings } from '../context/SettingsContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDrawer } from '../context/DrawerContext';
+import { isTV } from '../../components/tv';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function SettingsScreen() {
   const { settings, updateSetting } = useSettings();
   const insets = useSafeAreaInsets();
+  const { openDrawer } = useDrawer();
   const [showSeekModal, setShowSeekModal] = useState(false);
 
   const SectionHeader = ({ title }: { title: string }) => (
@@ -20,7 +24,16 @@ export default function SettingsScreen() {
   }: { 
     title: string, description: string, value: boolean, onValueChange: (v: boolean) => void 
   }) => (
-    <View style={styles.settingRow}>
+    <TVTouchable 
+      onPress={() => onValueChange(!value)}
+      style={({ focused, pressed }: any) => [
+        styles.settingRow,
+        {
+          borderColor: focused ? '#4F46E5' : 'rgba(255,255,255,0.05)',
+          backgroundColor: focused ? 'rgba(79, 70, 229, 0.1)' : '#1a1a24'
+        }
+      ]}
+    >
       <View style={styles.settingTextContainer}>
         <Text style={styles.settingTitle}>{title}</Text>
         <Text style={styles.settingDescription}>{description}</Text>
@@ -30,8 +43,9 @@ export default function SettingsScreen() {
         thumbColor={'#fff'}
         onValueChange={onValueChange}
         value={value}
+        disabled={isTV}
       />
-    </View>
+    </TVTouchable>
   );
 
   const SettingClickable = ({ 
@@ -39,7 +53,16 @@ export default function SettingsScreen() {
   }: { 
     title: string, description: string, value?: string, onPress: () => void 
   }) => (
-    <TVTouchable style={styles.settingRow} onPress={onPress}>
+    <TVTouchable 
+      onPress={onPress}
+      style={({ focused, pressed }: any) => [
+        styles.settingRow,
+        {
+          borderColor: focused ? '#4F46E5' : 'rgba(255,255,255,0.05)',
+          backgroundColor: focused ? 'rgba(79, 70, 229, 0.1)' : '#1a1a24'
+        }
+      ]}
+    >
       <View style={styles.settingTextContainer}>
         <Text style={styles.settingTitle}>{title}</Text>
         <Text style={styles.settingDescription}>{description}</Text>
@@ -51,6 +74,11 @@ export default function SettingsScreen() {
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
       <View style={styles.header}>
+        {!isTV && (
+          <TVTouchable onPress={openDrawer} style={{ marginRight: 15, padding: 5 }}>
+            <MaterialIcons name="menu" size={28} color="#fff" />
+          </TVTouchable>
+        )}
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 
@@ -59,42 +87,37 @@ export default function SettingsScreen() {
         
         <SettingToggle 
           title="Auto picture-in-picture"
-          description="Do not automatically switch to PiP"
+          description={settings.autoPiP ? "Automatically switch to PiP when the app is minimized" : "Do not automatically switch to PiP"}
           value={settings.autoPiP}
           onValueChange={(val) => updateSetting('autoPiP', val)}
         />
         
-        <SettingToggle 
-          title="Skip silence in Audio"
-          description="Play content as is"
-          value={settings.skipSilence}
-          onValueChange={(val) => updateSetting('skipSilence', val)}
-        />
+
         
         <SettingToggle 
-          title="Videos are always played in landscape mode"
-          description="Directly launch the player in landscape mode"
+          title="Always play in landscape mode"
+          description={settings.landscapeOnly ? "Always launch the player in landscape mode" : "Follow system orientation settings"}
           value={settings.landscapeOnly}
           onValueChange={(val) => updateSetting('landscapeOnly', val)}
         />
         
         <SettingToggle 
           title="Volume gesture control"
-          description="Use gestures to control player volume"
+          description={settings.volumeGesture ? "Swipe vertically on the right side to adjust volume" : "Gestures for volume are disabled"}
           value={settings.volumeGesture}
           onValueChange={(val) => updateSetting('volumeGesture', val)}
         />
         
         <SettingToggle 
           title="Brightness gesture control"
-          description="Use gestures to control player brightness"
+          description={settings.brightnessGesture ? "Swipe vertically on the left side to adjust brightness" : "Gestures for brightness are disabled"}
           value={settings.brightnessGesture}
           onValueChange={(val) => updateSetting('brightnessGesture', val)}
         />
         
         <SettingToggle 
           title="Resume playing"
-          description="Continue playing after interruptions (e.g. phonecalls)"
+          description={settings.resumePlay ? "Continue playing from where you left off" : "Always start videos from the beginning"}
           value={settings.resumePlay}
           onValueChange={(val) => updateSetting('resumePlay', val)}
         />
@@ -105,37 +128,8 @@ export default function SettingsScreen() {
           onPress={() => setShowSeekModal(true)}
         />
 
-        <SectionHeader title="Advance Video & render options" />
-        
-        <SettingClickable 
-          title="Select decoder"
-          description={settings.preferDecoder}
-          onPress={() => {
-            const next = settings.preferDecoder === 'Prefer device decoders' ? 'Prefer extension decoders' : 'Prefer device decoders';
-            updateSetting('preferDecoder', next);
-          }}
-        />
 
-        <SettingToggle 
-          title="Enable tunneling"
-          description="Use hardware acceleration, more important for 4k/HDR, but may not work on all devices"
-          value={settings.enableTunneling}
-          onValueChange={(val) => updateSetting('enableTunneling', val)}
-        />
 
-        <SettingToggle 
-          title="Dolby Vision profile 7"
-          description="Play UHD Blu-ray content containing DVP7"
-          value={settings.dolbyVision}
-          onValueChange={(val) => updateSetting('dolbyVision', val)}
-        />
-
-        <SectionHeader title="Shortcuts" />
-        <SettingClickable 
-          title="Captioning preferences"
-          description="System captioning settings"
-          onPress={() => {}} // Could link to Android captioning intent if needed
-        />
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -175,6 +169,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d0d14',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 15,
     paddingBottom: 15,
     borderBottomWidth: 1,

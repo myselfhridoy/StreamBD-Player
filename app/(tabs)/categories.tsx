@@ -7,7 +7,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from 'expo-router';
-import SideDrawer from '../../components/SideDrawer';
+import { useDrawer } from '../context/DrawerContext';
+import { isTV } from '../../components/tv';
 
 const DATA_URL = 'https://streambd-iptv.netlify.app/playlists/IPTV.json';
 
@@ -24,7 +25,7 @@ export default function CategoriesScreen() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { openDrawer } = useDrawer();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -99,12 +100,13 @@ export default function CategoriesScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
-      <SideDrawer visible={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
       
       <View style={styles.header}>
-        <TVTouchable style={styles.headerIconBtn} onPress={() => setIsDrawerOpen(true)}>
-          <MaterialIcons name="menu" size={28} color="#fff" />
-        </TVTouchable>
+        {!isTV && (
+          <TVTouchable style={styles.headerIconBtn} onPress={openDrawer}>
+            <MaterialIcons name="menu" size={28} color="#fff" />
+          </TVTouchable>
+        )}
         
         {!isSearchActive ? (
           <Text style={styles.headerTitle}>Categories</Text>

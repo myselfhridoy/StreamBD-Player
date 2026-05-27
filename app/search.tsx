@@ -6,13 +6,18 @@ import { useRouter, Stack } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Colors from '@/constants/Colors';
 
+import { isTV, TVTouchable } from '../components/tv';
+
 const { width } = Dimensions.get('window');
 const TMDB_API_KEY = '460327acf6e0235a391222cb530de9c8';
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const NUM_COLUMNS = 3;
-const CARD_MARGIN = 6;
-const CARD_WIDTH = (width - 32 - CARD_MARGIN * (NUM_COLUMNS - 1) * 2) / NUM_COLUMNS;
+const NUM_COLUMNS = isTV ? 7 : 3;
+const CARD_MARGIN = isTV ? 10 : 6;
+// Adjust the total width considering TV sidebar (if any) or standard TV margins
+const CARD_WIDTH = isTV 
+  ? (width - 150 - CARD_MARGIN * (NUM_COLUMNS * 2)) / NUM_COLUMNS
+  : (width - 32 - CARD_MARGIN * (NUM_COLUMNS * 2)) / NUM_COLUMNS;
 
 interface SearchResult {
   id: number;
@@ -76,11 +81,15 @@ export default function SearchScreen() {
   };
 
   const renderItem = ({ item }: { item: SearchResult }) => (
-    <Pressable
+    <TVTouchable
       onPress={() => handlePress(item)}
-      style={({ pressed }) => [
+      style={({ pressed, focused }: any) => [
         styles.card,
-        pressed && { opacity: 0.7 },
+        {
+          transform: [{ scale: focused || pressed ? 1.05 : 1 }],
+          borderColor: focused ? Colors.light.tint : 'transparent',
+          borderWidth: focused ? 2 : 0,
+        }
       ]}
     >
       <Image
@@ -100,7 +109,7 @@ export default function SearchScreen() {
           </Text>
         </View>
       </View>
-    </Pressable>
+    </TVTouchable>
   );
 
   return (
@@ -109,9 +118,9 @@ export default function SearchScreen() {
 
       {/* Search Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <TVTouchable onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={24} color="#FFF" />
-        </Pressable>
+        </TVTouchable>
         <View style={styles.searchInputContainer}>
           <MaterialIcons name="search" size={22} color="#888" />
           <TextInput
@@ -124,9 +133,9 @@ export default function SearchScreen() {
             returnKeyType="search"
           />
           {query.length > 0 && (
-            <Pressable onPress={() => { setQuery(''); setResults([]); setSearched(false); }}>
+            <TVTouchable onPress={() => { setQuery(''); setResults([]); setSearched(false); }} style={{ padding: 5 }}>
               <MaterialIcons name="close" size={20} color="#888" />
-            </Pressable>
+            </TVTouchable>
           )}
         </View>
       </View>

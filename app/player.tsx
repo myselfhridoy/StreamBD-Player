@@ -819,8 +819,6 @@ export default function PlayerScreen() {
             playInBackground={false}
             // Native Patches
             //@ts-ignore
-            skipSilence={settings.skipSilence}
-            enableTunneling={settings.enableTunneling}
             progressUpdateInterval={250}
           />
         ) : (

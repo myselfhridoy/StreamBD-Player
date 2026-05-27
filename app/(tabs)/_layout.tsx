@@ -77,10 +77,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="media"
+        name="custom"
         options={{
-          title: 'Media',
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="movie" color={color} focused={focused} />,
+          title: 'Network',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="cloud-download" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

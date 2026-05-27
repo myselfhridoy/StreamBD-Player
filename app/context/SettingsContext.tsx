@@ -3,28 +3,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type Settings = {
   autoPiP: boolean;
-  skipSilence: boolean;
   landscapeOnly: boolean;
   volumeGesture: boolean;
   brightnessGesture: boolean;
   resumePlay: boolean;
   seekDuration: number;
-  preferDecoder: string;
-  enableTunneling: boolean;
-  dolbyVision: boolean;
 };
 
 const defaultSettings: Settings = {
   autoPiP: false,
-  skipSilence: false,
   landscapeOnly: false,
   volumeGesture: true,
   brightnessGesture: true,
   resumePlay: false,
   seekDuration: 10,
-  preferDecoder: 'Prefer device decoders',
-  enableTunneling: false,
-  dolbyVision: false,
 };
 
 type SettingsContextType = {

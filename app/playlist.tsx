@@ -25,6 +25,8 @@ export default function PlaylistScreen() {
   // UI States
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [playlistToDelete, setPlaylistToDelete] = useState<{ id: string, name: string } | null>(null);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
 
   // Form States
@@ -119,21 +121,17 @@ export default function PlaylistScreen() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    Alert.alert(
-      "Delete Playlist",
-      `Are you sure you want to delete "${name}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: () => {
-            const updatedList = playlists.filter(p => p.id !== id);
-            savePlaylists(updatedList);
-          }
-        }
-      ]
-    );
+    setPlaylistToDelete({ id, name });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (playlistToDelete) {
+      const updatedList = playlists.filter(p => p.id !== playlistToDelete.id);
+      savePlaylists(updatedList);
+    }
+    setShowDeleteModal(false);
+    setPlaylistToDelete(null);
   };
 
   const openChannelBrowser = (playlist: Playlist) => {
@@ -267,6 +265,37 @@ export default function PlaylistScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Premium Delete Confirmation Modal */}
+      <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
+        <View style={styles.premiumModalOverlay}>
+          <View style={[styles.premiumModalContent, { alignItems: 'center', paddingTop: 30 }]}>
+            <View style={styles.deleteIconContainer}>
+              <MaterialIcons name="delete-outline" size={40} color="#ff4444" />
+            </View>
+            <Text style={[styles.premiumModalTitle, { fontSize: 22, textAlign: 'center', marginTop: 15 }]}>Delete Playlist</Text>
+            <Text style={styles.deleteModalSubtitle}>
+              Are you sure you want to delete "{playlistToDelete?.name}"?
+            </Text>
+            
+            <View style={styles.deleteModalActions}>
+              <TVTouchable 
+                hasTVPreferredFocus={true} 
+                style={[styles.deleteBtn, styles.deleteBtnCancel]} 
+                onPress={() => setShowDeleteModal(false)}
+              >
+                <Text style={styles.deleteBtnCancelText}>Cancel</Text>
+              </TVTouchable>
+              <TVTouchable 
+                style={[styles.deleteBtn, styles.deleteBtnConfirm]} 
+                onPress={confirmDelete}
+              >
+                <Text style={styles.deleteBtnConfirmText}>Delete</Text>
+              </TVTouchable>
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -429,5 +458,76 @@ const styles = StyleSheet.create({
     color: '#4FA5D6',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  premiumModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  premiumModalContent: {
+    backgroundColor: '#161622',
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    elevation: 10,
+  },
+  premiumModalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'Inter_Bold',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  deleteIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteModalSubtitle: {
+    color: '#8a8aa3',
+    fontSize: 15,
+    fontFamily: 'Inter_Medium',
+    textAlign: 'center',
+    marginBottom: 25,
+    marginTop: -5,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  deleteBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  deleteBtnCancel: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  deleteBtnConfirm: {
+    backgroundColor: '#ff4444',
+  },
+  deleteBtnCancelText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_SemiBold',
+  },
+  deleteBtnConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_Bold',
   },
 });

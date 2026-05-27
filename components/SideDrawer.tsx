@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { TVTouchable } from './TVTouchable';
 
-import { StyleSheet, View, Text, Modal, Animated, Dimensions, TouchableWithoutFeedback, Linking, Share, ScrollView, BackHandler, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
+import { Animated, BackHandler, Dimensions, Linking, Modal, ScrollView, Share, StyleSheet, Text, TouchableWithoutFeedback, View, Image } from 'react-native';
 import { clearTokenCache } from '../utils/tokenParser';
 
 const { width, height } = Dimensions.get('window');
@@ -70,8 +70,8 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
   const menuItems = [
     { icon: 'home', label: 'Home', onPress: () => { onClose(); router.push('/'); } },
     { icon: 'dashboard', label: 'Categories', onPress: () => { onClose(); router.push('/categories'); } },
-    { icon: 'movie', label: 'Media', onPress: () => { onClose(); router.push('/media'); } },
-    { icon: 'favorite', label: 'Favourites', onPress: () => { onClose(); router.push('/favorites'); } },
+    { icon: 'cloud-download', label: 'Network', onPress: () => { onClose(); router.push('/custom'); } },
+    { icon: 'favorite', label: 'Favorites', onPress: () => { onClose(); router.push('/favorites'); } },
     { icon: 'playlist-play', label: 'Playlists', onPress: () => { onClose(); router.push('/playlist'); } },
     { icon: 'settings', label: 'Settings', onPress: () => { onClose(); router.push('/settings'); } },
     { icon: 'picture-in-picture', label: 'Floating Player', onPress: () => { onClose(); /* Will add PIP logic later */ } },
@@ -81,9 +81,11 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
     { icon: 'share', label: 'Share Our App', onPress: () => { onClose(); handleShare(); } },
     { icon: 'email', label: 'Email', onPress: () => { onClose(); handleEmail(); } },
     { icon: 'system-update', label: 'Update App', onPress: () => { onClose(); } },
-    { icon: 'exit-to-app', label: 'Exit', onPress: () => { 
+    {
+      icon: 'exit-to-app', label: 'Exit', onPress: () => {
         setShowExitModal(true);
-    } },
+      }
+    },
   ];
 
   return (
@@ -92,13 +94,16 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
         <TouchableWithoutFeedback onPress={onClose}>
           <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
         </TouchableWithoutFeedback>
-        
+
         <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
           <View style={styles.header}>
-            <Text style={styles.logoText}>Stream<Text style={styles.logoTextHighlight}>BD</Text></Text>
+            <Image 
+              source={require('../assets/images/icon.png')} 
+              style={{ width: 200, height: 70, resizeMode: 'contain', marginBottom: 10 }} 
+            />
             <Text style={styles.subtitle}>Best streaming experience!</Text>
           </View>
-          
+
           <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
             {menuItems.map((item, index) => (
               <TVTouchable key={index} style={styles.menuItem} onPress={item.onPress}>
@@ -120,17 +125,17 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
             </View>
             <Text style={[styles.premiumModalTitle, { fontSize: 22, textAlign: 'center', marginTop: 15 }]}>Exit App</Text>
             <Text style={styles.exitModalSubtitle}>Are you sure you want to exit StreamBD Player?</Text>
-            
+
             <View style={styles.exitModalActions}>
-              <TVTouchable 
-                hasTVPreferredFocus={true} 
-                style={[styles.exitBtn, styles.exitBtnCancel]} 
+              <TVTouchable
+                hasTVPreferredFocus={true}
+                style={[styles.exitBtn, styles.exitBtnCancel]}
                 onPress={() => setShowExitModal(false)}
               >
                 <Text style={styles.exitBtnCancelText}>Cancel</Text>
               </TVTouchable>
-              <TVTouchable 
-                style={[styles.exitBtn, styles.exitBtnConfirm]} 
+              <TVTouchable
+                style={[styles.exitBtn, styles.exitBtnConfirm]}
                 onPress={() => { setShowExitModal(false); onClose(); clearTokenCache(); BackHandler.exitApp(); }}
               >
                 <Text style={styles.exitBtnConfirmText}>Exit</Text>
@@ -170,9 +175,11 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 50,
+    paddingTop: 40,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoText: {
     color: '#fff',

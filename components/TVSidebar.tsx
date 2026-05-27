@@ -11,7 +11,7 @@ const EXPANDED_WIDTH = 180;
 const MENU_ITEMS = [
   { icon: 'home', label: 'Home', route: '/' },
   { icon: 'dashboard', label: 'Categories', route: '/categories' },
-  { icon: 'movie', label: 'Media', route: '/media' },
+  { icon: 'cloud-download', label: 'Network', route: '/custom' },
   { icon: 'favorite', label: 'Favorites', route: '/favorites' },
   { icon: 'settings', label: 'Settings', route: '/settings' },
 ];
