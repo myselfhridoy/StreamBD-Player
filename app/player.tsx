@@ -224,8 +224,17 @@ export default function PlayerScreen() {
     volSub = VolumeManager.addVolumeListener((result) => {
       currentVolume.current = result.volume;
     });
+
+    // Hide Native Volume UI when Player is open (Critical for smooth gestures)
+    if (Platform.OS !== 'web' && !isTV) {
+      VolumeManager.showNativeVolumeUI({ enabled: false });
+    }
+
     return () => {
       if (volSub) volSub.remove();
+      if (Platform.OS !== 'web' && !isTV) {
+        VolumeManager.showNativeVolumeUI({ enabled: true });
+      }
     };
   }, []);
 
@@ -234,7 +243,7 @@ export default function PlayerScreen() {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (evt, gestureState) => !isTV && Math.abs(gestureState.dy) > 20,
+      onMoveShouldSetPanResponder: (evt, gestureState) => !isTV && Math.abs(gestureState.dy) > 20 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
       onPanResponderGrant: () => {
         if (isTV) return;
         if (settings.volumeGesture) {
@@ -255,15 +264,22 @@ export default function PlayerScreen() {
           // Left side: Brightness
           let newBright = startVal.current.bright + delta;
           newBright = Math.max(0, Math.min(newBright, 1));
-          Brightness.setBrightnessAsync(newBright);
-          currentBrightness.current = newBright;
-          showOverlayFeedback(`Brightness: ${Math.round(newBright * 100)}%`);
+          
+          if (Math.abs(newBright - currentBrightness.current) >= 0.02) { // 2% step to prevent stutter
+            Brightness.setBrightnessAsync(newBright);
+            currentBrightness.current = newBright;
+            showOverlayFeedback(`Brightness: ${Math.round(newBright * 100)}%`);
+          }
         } else if (moveX >= width / 2 && settings.volumeGesture) {
           // Right side: Volume
           let newVol = startVal.current.vol + delta;
           newVol = Math.max(0, Math.min(newVol, 1));
-          VolumeManager.setVolume(newVol);
-          showOverlayFeedback(`Volume: ${Math.round(newVol * 100)}%`);
+          
+          if (Math.abs(newVol - currentVolume.current) >= 0.03) { // 3% step to prevent stutter
+            VolumeManager.setVolume(newVol);
+            currentVolume.current = newVol; // Optimistic local cache
+            showOverlayFeedback(`Volume: ${Math.round(newVol * 100)}%`);
+          }
         }
       },
     })
