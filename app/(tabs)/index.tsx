@@ -1,13 +1,14 @@
 import Colors from '@/constants/Colors';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, ScrollView, Image, StyleSheet, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, ScrollView, Image, StyleSheet, View, useColorScheme, Modal, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '../../components/Text';
 import { TVTouchable, isTV } from '../../components/tv';
 import { useDrawer } from '../context/DrawerContext';
+import { clearTokenCache } from '../../utils/tokenParser';
 
 const { width, height } = Dimensions.get('window');
 const TMDB_API_KEY = '460327acf6e0235a391222cb530de9c8';
@@ -92,11 +93,23 @@ export default function MediaScreen() {
   const { openDrawer } = useDrawer();
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [showExitModal, setShowExitModal] = useState(false);
   const [heroItems, setHeroItems] = useState<MediaItem[]>([]);
   const [heroIndex, setHeroIndex] = useState(0);
   const [focusedHeroItem, setFocusedHeroItem] = useState<MediaItem | null>(null);
   const [isAutoRotate, setIsAutoRotate] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        setShowExitModal(true);
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [])
+  );
 
   useEffect(() => {
     fetchData();
@@ -265,6 +278,35 @@ export default function MediaScreen() {
           </TVTouchable>
         </View>
       </LinearGradient>
+
+      {/* Exit Confirmation Modal */}
+      <Modal visible={showExitModal} transparent animationType="fade" onRequestClose={() => setShowExitModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.premiumModalContent, { alignItems: 'center', paddingTop: 30 }]}>
+            <View style={styles.exitIconContainer}>
+              <MaterialIcons name="exit-to-app" size={40} color="#E50914" />
+            </View>
+            <Text style={[styles.premiumModalTitle, { fontSize: 22, textAlign: 'center', marginTop: 15 }]}>Exit App</Text>
+            <Text style={styles.exitModalSubtitle}>Are you sure you want to exit StreamBD Player?</Text>
+
+            <View style={styles.exitModalActions}>
+              <TVTouchable
+                hasTVPreferredFocus={true}
+                style={[styles.exitBtn, styles.exitBtnCancel]}
+                onPress={() => setShowExitModal(false)}
+              >
+                <Text style={styles.exitBtnCancelText}>Cancel</Text>
+              </TVTouchable>
+              <TVTouchable
+                style={[styles.exitBtn, styles.exitBtnConfirm]}
+                onPress={() => { setShowExitModal(false); clearTokenCache(); BackHandler.exitApp(); }}
+              >
+                <Text style={styles.exitBtnConfirmText}>Exit</Text>
+              </TVTouchable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -423,5 +465,72 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  premiumModalContent: {
+    backgroundColor: '#1E1E2A',
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  premiumModalTitle: {
+    color: '#FFF',
+    fontSize: 20,
+    fontFamily: 'Inter_Bold',
+    marginBottom: 10,
+  },
+  exitIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(229, 9, 20, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exitModalSubtitle: {
+    color: '#8a8aa3',
+    fontSize: 15,
+    fontFamily: 'Inter_Medium',
+    textAlign: 'center',
+    marginBottom: 25,
+    marginTop: -5,
+  },
+  exitModalActions: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  exitBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exitBtnCancel: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  exitBtnConfirm: {
+    backgroundColor: '#E50914',
+  },
+  exitBtnCancelText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_SemiBold',
+  },
+  exitBtnConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_Bold',
   }
 });

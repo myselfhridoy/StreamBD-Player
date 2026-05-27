@@ -66,7 +66,6 @@ export default function HomeScreen() {
   const [showUAModal, setShowUAModal] = useState(false);
   const [showDrmModal, setShowDrmModal] = useState(false);
   const [showCustomUAModal, setShowCustomUAModal] = useState(false);
-  const [showExitModal, setShowExitModal] = useState(false);
   const [customUAInput, setCustomUAInput] = useState('');
   const [customUA, setCustomUA] = useState('');
 
@@ -89,17 +88,6 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
-
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        setShowExitModal(true);
-        return true;
-      };
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => subscription.remove();
-    }, [])
-  );
 
   const handlePlay = () => {
     if (!mediaUrl || !mediaUrl.trim()) {
@@ -304,34 +292,7 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      {/* Exit Confirmation Modal */}
-      <Modal visible={showExitModal} transparent animationType="fade" onRequestClose={() => setShowExitModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.premiumModalContent, { alignItems: 'center', paddingTop: 30 }]}>
-            <View style={styles.exitIconContainer}>
-              <MaterialIcons name="exit-to-app" size={40} color="#E50914" />
-            </View>
-            <Text style={[styles.premiumModalTitle, { fontSize: 22, textAlign: 'center', marginTop: 15 }]}>Exit App</Text>
-            <Text style={styles.exitModalSubtitle}>Are you sure you want to exit StreamBD Player?</Text>
 
-            <View style={styles.exitModalActions}>
-              <TVTouchable
-                hasTVPreferredFocus={true}
-                style={[styles.exitBtn, styles.exitBtnCancel]}
-                onPress={() => setShowExitModal(false)}
-              >
-                <Text style={styles.exitBtnCancelText}>Cancel</Text>
-              </TVTouchable>
-              <TVTouchable
-                style={[styles.exitBtn, styles.exitBtnConfirm]}
-                onPress={() => { setShowExitModal(false); clearTokenCache(); BackHandler.exitApp(); }}
-              >
-                <Text style={styles.exitBtnConfirmText}>Exit</Text>
-              </TVTouchable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </LinearGradient>
   );
 }
@@ -528,51 +489,6 @@ const styles = StyleSheet.create({
   },
   modalOk: {
     color: '#A78BFA',
-    fontSize: 16,
-    fontFamily: 'Inter_Bold',
-  },
-  exitIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(229, 9, 20, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  exitModalSubtitle: {
-    color: '#8a8aa3',
-    fontSize: 15,
-    fontFamily: 'Inter_Medium',
-    textAlign: 'center',
-    marginBottom: 25,
-    marginTop: -5,
-  },
-  exitModalActions: {
-    flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-between',
-    gap: 15,
-  },
-  exitBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  exitBtnCancel: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  exitBtnConfirm: {
-    backgroundColor: '#E50914',
-  },
-  exitBtnCancelText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'Inter_SemiBold',
-  },
-  exitBtnConfirmText: {
-    color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter_Bold',
   },
