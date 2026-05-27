@@ -10,6 +10,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
 import { SettingsProvider } from './context/SettingsContext';
 import { PlaylistProvider } from './context/PlaylistContext';
+import { DrawerProvider } from './context/DrawerContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -62,14 +63,16 @@ function RootLayoutNav() {
   return (
     <SettingsProvider>
       <PlaylistProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="player" options={{ headerShown: false }} />
-          <Stack.Screen name="history" options={{ headerShown: false }} />
-          <Stack.Screen name="details/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="sources" options={{ headerShown: false }} />
-          <Stack.Screen name="search" options={{ headerShown: false }} />
-        </Stack>
+        <DrawerProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="player" options={{ headerShown: false }} />
+            <Stack.Screen name="history" options={{ headerShown: false }} />
+            <Stack.Screen name="details/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="sources" options={{ headerShown: false }} />
+            <Stack.Screen name="search" options={{ headerShown: false }} />
+          </Stack>
+        </DrawerProvider>
       </PlaylistProvider>
     </SettingsProvider>
   );

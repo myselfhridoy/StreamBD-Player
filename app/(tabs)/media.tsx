@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Image, Animated, Dimensions, Platform, ActivityIndicator, Pressable, ScrollView } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, StyleSheet, FlatList, Image, Dimensions, ActivityIndicator } from 'react-native';
 import Text from '../../components/Text';
+import { TVTouchable, isTV } from '../../components/tv';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
@@ -55,16 +56,55 @@ const CATEGORIES = [
   },
 ];
 
+const MediaCard = React.memo(({ item, onPress, onFocusChange }: { item: MediaItem, onPress: (item: MediaItem) => void, onFocusChange: (item: MediaItem | null) => void }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  
+  return (
+    <TVTouchable
+      onPress={() => onPress(item)}
+      onFocus={() => {
+        setIsFocused(true);
+        onFocusChange(item);
+      }}
+      onBlur={() => {
+        setIsFocused(false);
+        onFocusChange(null);
+      }}
+      style={({ pressed }: any) => [
+        styles.cardWrapper,
+        {
+          transform: [{ scale: isFocused || pressed ? 1.05 : 1 }],
+          borderColor: isFocused ? Colors.light.tint : 'transparent',
+          borderWidth: isFocused ? 2 : 0,
+        }
+      ]}
+    >
+      <View style={styles.cardContainer}>
+        <Image
+          source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }}
+          style={styles.cardImage}
+          resizeMode="cover"
+        />
+        <View style={styles.ratingBadge}>
+          <MaterialIcons name="star" size={12} color="#F59E0B" />
+          <Text style={styles.ratingText}>{item.vote_average?.toFixed(1)}</Text>
+        </View>
+      </View>
+    </TVTouchable>
+  );
+});
+
 export default function MediaScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const scrollY = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [heroItems, setHeroItems] = useState<MediaItem[]>([]);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [focusedHeroItem, setFocusedHeroItem] = useState<MediaItem | null>(null);
+  const [isAutoRotate, setIsAutoRotate] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -74,7 +114,6 @@ export default function MediaScreen() {
   const fetchData = async () => {
     try {
       const fetchedCategories: Category[] = [];
-      let firstItem: MediaItem | null = null;
 
       for (const cat of CATEGORIES) {
         const res = await fetch(`${BASE_URL}${cat.url}`);
@@ -87,7 +126,6 @@ export default function MediaScreen() {
         });
       }
 
-      // Collect hero candidates from all categories
       const heroPool: MediaItem[] = [];
       for (const cat of fetchedCategories) {
         const valid = cat.items.filter((r: MediaItem) => r.backdrop_path);
@@ -103,18 +141,17 @@ export default function MediaScreen() {
     }
   };
 
-  // Auto-rotate hero every 6s
   useEffect(() => {
-    if (heroItems.length <= 1) return;
+    if (!isAutoRotate || heroItems.length <= 1) return;
     const interval = setInterval(() => {
       setHeroIndex(prev => (prev + 1) % heroItems.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [heroItems]);
+  }, [heroItems, isAutoRotate]);
 
-  const heroItem = heroItems.length > 0 ? heroItems[heroIndex] : null;
+  const heroItem = focusedHeroItem || (heroItems.length > 0 ? heroItems[heroIndex] : null);
 
-  const handlePress = (item: MediaItem) => {
+  const handlePress = useCallback((item: MediaItem) => {
     router.push({
       pathname: '/details/[id]',
       params: { 
@@ -122,37 +159,17 @@ export default function MediaScreen() {
         type: item.media_type || 'movie'
       }
     });
-  };
+  }, [router]);
 
-  const MediaCard = ({ item }: { item: MediaItem }) => {
-    const [isFocused, setIsFocused] = useState(false);
-    
-    return (
-      <Pressable
-        onPress={() => handlePress(item)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        style={({ pressed }) => [
-          styles.cardContainer,
-          {
-            transform: [{ scale: isFocused || pressed ? 1.05 : 1 }],
-            borderColor: isFocused ? Colors.light.tint : 'transparent',
-            borderWidth: isFocused ? 2 : 0,
-          }
-        ]}
-      >
-        <Image
-          source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }}
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
-        <View style={styles.ratingBadge}>
-          <MaterialIcons name="star" size={12} color="#F59E0B" />
-          <Text style={styles.ratingText}>{item.vote_average?.toFixed(1)}</Text>
-        </View>
-      </Pressable>
-    );
-  };
+  const handleFocusChange = useCallback((item: MediaItem | null) => {
+    if (item) {
+      setFocusedHeroItem(item);
+      setIsAutoRotate(false);
+    } else {
+      setFocusedHeroItem(null);
+      setIsAutoRotate(true);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -162,89 +179,86 @@ export default function MediaScreen() {
     );
   }
 
+  const renderHero = () => {
+    if (!heroItem) return null;
+    return (
+      <View style={styles.heroContainer}>
+        <Image
+          source={{ uri: `${HERO_IMAGE_URL}${heroItem.backdrop_path || heroItem.poster_path}` }}
+          style={styles.heroImage}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(10,10,10,0.4)', isDark ? '#0A0A0A' : '#F5F5F5']}
+          style={styles.heroGradient}
+        />
+        <View style={styles.heroContent}>
+          <Text style={styles.heroTitle} numberOfLines={2}>
+            {heroItem.title || heroItem.name}
+          </Text>
+          
+          <View style={styles.heroButtons}>
+            <TVTouchable
+              onPress={() => handlePress(heroItem)}
+              style={({ pressed }: any) => [
+                styles.playButton,
+                { opacity: pressed ? 0.8 : 1 }
+              ]}
+            >
+              <MaterialIcons name="play-arrow" size={28} color="#000" />
+              <Text style={styles.playButtonText}>Play</Text>
+            </TVTouchable>
+            
+            <TVTouchable
+              onPress={() => handlePress(heroItem)}
+              style={({ pressed }: any) => [
+                styles.detailsButton,
+                { opacity: pressed ? 0.8 : 1 }
+              ]}
+            >
+              <MaterialIcons name="info-outline" size={24} color="#FFF" />
+              <Text style={styles.detailsButtonText}>Details</Text>
+            </TVTouchable>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0A0A0A' : '#F5F5F5' }]}>
-      <Animated.ScrollView
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-        contentContainerStyle={styles.scrollContent}
+      <FlatList
+        data={categories}
+        keyExtractor={(_, index) => index.toString()}
+        ListHeaderComponent={renderHero}
         showsVerticalScrollIndicator={false}
-      >
-        {/* HERO SECTION */}
-        {heroItem && (
-          <View style={styles.heroContainer}>
-            <Image
-              source={{ uri: `${HERO_IMAGE_URL}${heroItem.backdrop_path || heroItem.poster_path}` }}
-              style={styles.heroImage}
-              resizeMode="cover"
+        contentContainerStyle={styles.scrollContent}
+        removeClippedSubviews={false}
+        renderItem={({ item: category }) => (
+          <View style={styles.rowContainer}>
+            <Text style={[styles.rowTitle, { color: isDark ? '#FFF' : '#000' }]}>{category.title}</Text>
+            <FlatList
+              horizontal
+              data={category.items}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => <MediaCard item={item} onPress={handlePress} onFocusChange={handleFocusChange} />}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.rowContent}
+              initialNumToRender={5}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={false}
             />
-            <LinearGradient
-              colors={['transparent', 'rgba(10,10,10,0.4)', isDark ? '#0A0A0A' : '#F5F5F5']}
-              style={styles.heroGradient}
-            />
-            <View style={styles.heroContent}>
-              <Text style={styles.heroTitle} numberOfLines={2}>
-                {heroItem.title || heroItem.name}
-              </Text>
-              
-              <View style={styles.heroButtons}>
-                <Pressable
-                  onPress={() => handlePress(heroItem)}
-                  style={({ pressed }) => [
-                    styles.playButton,
-                    { opacity: pressed ? 0.8 : 1 }
-                  ]}
-                >
-                  <MaterialIcons name="play-arrow" size={28} color="#000" />
-                  <Text style={styles.playButtonText}>Play</Text>
-                </Pressable>
-                
-                <Pressable
-                  onPress={() => handlePress(heroItem)}
-                  style={({ pressed }) => [
-                    styles.detailsButton,
-                    { opacity: pressed ? 0.8 : 1 }
-                  ]}
-                >
-                  <MaterialIcons name="info-outline" size={24} color="#FFF" />
-                  <Text style={styles.detailsButtonText}>Details</Text>
-                </Pressable>
-              </View>
-            </View>
           </View>
         )}
+      />
 
-        {/* CATEGORIES */}
-        <View style={styles.categoriesContainer}>
-          {categories.map((category, index) => (
-            <View key={index} style={styles.rowContainer}>
-              <Text style={[styles.rowTitle, { color: isDark ? '#FFF' : '#000' }]}>{category.title}</Text>
-              <FlatList
-                horizontal
-                data={category.items}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => <MediaCard item={item} />}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.rowContent}
-                initialNumToRender={5}
-                maxToRenderPerBatch={10}
-                windowSize={5}
-              />
-            </View>
-          ))}
-        </View>
-      </Animated.ScrollView>
-
-      {/* Search FAB */}
-      <Pressable
+      <TVTouchable
         onPress={() => router.push('/search')}
         style={[styles.searchFab, { top: Math.max(insets.top, 20) + 10 }]}
       >
         <MaterialIcons name="search" size={24} color="#FFF" />
-      </Pressable>
+      </TVTouchable>
     </View>
   );
 }
@@ -263,8 +277,9 @@ const styles = StyleSheet.create({
   },
   heroContainer: {
     width: '100%',
-    height: Platform.OS === 'android' && Platform.isTV ? height * 0.7 : height * 0.65,
+    height: isTV ? height * 0.7 : height * 0.65,
     position: 'relative',
+    marginBottom: -20,
   },
   heroImage: {
     width: '100%',
@@ -279,7 +294,7 @@ const styles = StyleSheet.create({
   },
   heroContent: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 20,
     left: 0,
     right: 0,
     padding: 20,
@@ -327,9 +342,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginLeft: 8,
   },
-  categoriesContainer: {
-    marginTop: -20,
-  },
   rowContainer: {
     marginBottom: 25,
   },
@@ -342,10 +354,13 @@ const styles = StyleSheet.create({
   rowContent: {
     paddingHorizontal: 15,
   },
+  cardWrapper: {
+    marginHorizontal: 5,
+    borderRadius: 12,
+  },
   cardContainer: {
     width: 120,
     height: 180,
-    marginHorizontal: 5,
     borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#333',

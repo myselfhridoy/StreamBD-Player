@@ -7,14 +7,15 @@ import * as Brightness from 'expo-brightness';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View, findNodeHandle, AccessibilityInfo } from 'react-native';
 import Video, { DRMType, OnLoadData, ReactVideoSource, SelectedTrackType, SelectedVideoTrackType, VideoRef } from 'react-native-video';
 import { VolumeManager } from 'react-native-volume-manager';
 import Text from '../components/Text';
 import { resolveCustomTokenUrl } from '../utils/tokenParser';
 import { usePlaylist } from './context/PlaylistContext';
 import { useSettings } from './context/SettingsContext';
+import { isTV } from '../components/tv';
 ;
 
 export default function PlayerScreen() {
@@ -59,6 +60,18 @@ export default function PlayerScreen() {
 
   const [playerError, setPlayerError] = useState<{ title: string, message: string } | null>(null);
 
+  // Seek Debounce
+  const seekTimeout = useRef<any>(null);
+  const handleSeek = useCallback((newTime: number, currentDuration: number) => {
+    if (currentDuration <= 0) return;
+    const finalTime = Math.max(0, Math.min(newTime, currentDuration));
+    
+    if (seekTimeout.current) clearTimeout(seekTimeout.current);
+    seekTimeout.current = setTimeout(() => {
+      videoRef.current?.seek(finalTime);
+    }, 250);
+  }, []);
+
   // Overlay feedback
   const [overlayText, setOverlayText] = useState('');
   const overlayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,13 +90,15 @@ export default function PlayerScreen() {
     checkFavoriteStatus();
     saveToHistory();
     // Apply initial Landscape lock if needed
-    if (settings.landscapeOnly) {
+    if (settings.landscapeOnly && !isTV) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
       setIsLandscape(true);
     }
 
     return () => {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      if (!isTV) {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      }
     };
   }, [settings.landscapeOnly, mediaUrl]);
 
@@ -219,8 +234,9 @@ export default function PlayerScreen() {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dy) > 20,
+      onMoveShouldSetPanResponder: (evt, gestureState) => !isTV && Math.abs(gestureState.dy) > 20,
       onPanResponderGrant: () => {
+        if (isTV) return;
         if (settings.volumeGesture) {
           startVal.current.vol = currentVolume.current;
         }
@@ -229,6 +245,7 @@ export default function PlayerScreen() {
         }
       },
       onPanResponderMove: (evt, gestureState) => {
+        if (isTV) return;
         const { moveX, dy } = gestureState;
         const width = Dimensions.get('window').width;
         const height = Dimensions.get('window').height;
@@ -262,13 +279,21 @@ export default function PlayerScreen() {
   const startControlsTimeout = () => {
     clearControlsTimeout();
     if (!paused && !showSettings) {
-      controlsTimeoutRef.current = setTimeout(() => hideControls(), 4000);
+      controlsTimeoutRef.current = setTimeout(() => hideControls(), isTV ? 8000 : 4000);
     }
   };
+
+  const playBtnRef = useRef<any>(null);
 
   const showControlsUI = () => {
     setShowControls(true);
     Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    if (isTV) {
+      setTimeout(() => {
+        const handle = findNodeHandle(playBtnRef.current);
+        if (handle) AccessibilityInfo.setAccessibilityFocus(handle);
+      }, 150);
+    }
     startControlsTimeout();
   };
 
@@ -309,7 +334,7 @@ export default function PlayerScreen() {
       } catch (e) { }
     }
 
-    if (!data.duration || data.duration <= 0 || data.duration > 86400) {
+    if (!data.duration || data.duration <= 0 || (data.duration > 86400 && String(isVod) !== 'true')) {
       setIsLive(true);
       setDuration(0);
     } else {
@@ -359,7 +384,7 @@ export default function PlayerScreen() {
   };
 
   const togglePiP = () => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web' || isTV) return;
     setIsPiPActive(true);
     try {
       videoRef.current?.enterPictureInPicture();
@@ -445,7 +470,7 @@ export default function PlayerScreen() {
     drmConfig = { type, licenseServer: finalLicenseServer, headers: Object.keys(headers).length > 0 ? headers : undefined };
   }
 
-  const switchChannel = (channel: any) => {
+  const switchChannel = useCallback((channel: any) => {
     if (!channel) return;
     setIsBuffering(true);
     setIsReady(false);
@@ -465,10 +490,10 @@ export default function PlayerScreen() {
       tokenId: channel.tokenId ? String(channel.tokenId) : ''
     });
     showOverlayFeedback(`Switching to ${channel.name}`);
-  };
+  }, [router]);
 
-  const handleNextChannel = () => switchChannel(nextChannel());
-  const handlePrevChannel = () => switchChannel(prevChannel());
+  const handleNextChannel = useCallback(() => switchChannel(nextChannel()), [switchChannel, nextChannel]);
+  const handlePrevChannel = useCallback(() => switchChannel(prevChannel()), [switchChannel, prevChannel]);
 
   const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | null>(null);
   const [resolvedHeaders, setResolvedHeaders] = useState<Record<string, string> | undefined>(undefined);
@@ -600,19 +625,110 @@ export default function PlayerScreen() {
     performUrlResolution();
   }, [finalMediaUrl]);
 
+  // Unified TV State Ref for Event Handler
+  const stateRef = useRef({ showControls, showSettings, currentTime, paused, duration });
+  useEffect(() => {
+    stateRef.current = { showControls, showSettings, currentTime, paused, duration };
+  }, [showControls, showSettings, currentTime, paused, duration]);
+
+  const actionsRef = useRef({ showControlsUI, hideControls, startControlsTimeout, router, handleSeek, handlePrevChannel, handleNextChannel });
+  useEffect(() => {
+    actionsRef.current = { showControlsUI, hideControls, startControlsTimeout, router, handleSeek, handlePrevChannel, handleNextChannel };
+  });
+
+  // Global TV Event Handler for Player
+  useEffect(() => {
+    if (!isTV) return;
+    let tvEventHandler: any;
+    try {
+      const { default: TVEventHandler } = require('react-native/Libraries/Components/AppleTV/TVEventHandler');
+      tvEventHandler = new TVEventHandler();
+      tvEventHandler.enable(null, (cmp: any, evt: any) => {
+        if (!evt) return;
+        const key = evt.eventType || '';
+        const code = evt.eventKeyCode || 0;
+        const current = stateRef.current;
+        const actions = actionsRef.current;
+
+        // Settings Modal Open
+        if (current.showSettings) {
+          if (key === 'menu' || code === 82 || code === 4 || key === 'escape') {
+            setShowSettings(false);
+            actions.startControlsTimeout();
+          }
+          return; // Let native focus handle the rest inside settings
+        }
+
+        // Controls Hidden
+        if (!current.showControls) {
+          if (key === 'select' || key === 'playPause' || code === 23 || code === 66 || code === 85) {
+            actions.showControlsUI();
+          } else if (key === 'left' || code === 21) {
+            actions.showControlsUI();
+            actions.handleSeek(current.currentTime - settings.seekDuration, current.duration);
+          } else if (key === 'right' || code === 22) {
+            actions.showControlsUI();
+            actions.handleSeek(current.currentTime + settings.seekDuration, current.duration);
+          } else if (key === 'up' || code === 19) {
+            actions.handlePrevChannel();
+          } else if (key === 'down' || code === 20) {
+            actions.handleNextChannel();
+          } else if (key === 'menu' || code === 82 || code === 4 || key === 'escape') {
+            actions.router.back();
+          }
+        } 
+        // Controls Visible
+        else {
+          if (key === 'menu' || code === 82 || code === 4 || key === 'escape') {
+            actions.hideControls();
+          } else if (key === 'playPause') { // Dedicated play/pause key
+            setPaused(p => !p);
+            actions.showControlsUI(); // reset timeout
+          }
+        }
+      });
+    } catch (e) {
+      console.log('TVEventHandler init failed', e);
+    }
+    return () => {
+      if (tvEventHandler) {
+        try { tvEventHandler.disable(); } catch (e) {}
+      }
+    };
+  }, [settings.seekDuration]);
+
   return (
     <View
       style={styles.container}
       {...panResponder.panHandlers}
       focusable={true}
       //@ts-ignore
-      onKeyDown={(e: any) => {
-        if (e.nativeEvent.key === 'ArrowDown') {
-          handleNextChannel();
-        } else if (e.nativeEvent.key === 'ArrowUp') {
-          handlePrevChannel();
+      onKeyDown={(Platform.OS === 'web' || (Platform.OS === 'android' && !Platform.isTV)) ? (e: any) => {
+        const key = e.nativeEvent.key;
+        
+        // Settings Open
+        if (showSettings) {
+          if (key === 'Escape' || key === 'Backspace') {
+            setShowSettings(false);
+            startControlsTimeout();
+          }
+          return;
         }
-      }}
+
+        // Controls Hidden
+        if (!showControls) {
+          if (key === 'ArrowDown') handleNextChannel();
+          else if (key === 'ArrowUp') handlePrevChannel();
+          else if (key === 'ArrowLeft') { showControlsUI(); handleSeek(currentTime - settings.seekDuration, duration); }
+          else if (key === 'ArrowRight') { showControlsUI(); handleSeek(currentTime + settings.seekDuration, duration); }
+          else if (key === 'Enter' || key === ' ') showControlsUI();
+          else if (key === 'Escape' || key === 'Backspace') router.back();
+        } 
+        // Controls Visible
+        else {
+          if (key === 'Escape' || key === 'Backspace') hideControls();
+        }
+      } : undefined}
     >
       <Stack.Screen options={{
         headerShown: false,
@@ -689,7 +805,7 @@ export default function PlayerScreen() {
             //@ts-ignore
             skipSilence={settings.skipSilence}
             enableTunneling={settings.enableTunneling}
-            progressUpdateInterval={1000}
+            progressUpdateInterval={250}
           />
         ) : (
           <View style={[styles.loadingOverlay, { backgroundColor: '#000' }]}>
@@ -729,8 +845,13 @@ export default function PlayerScreen() {
         </View>
       )}
 
-      {/* Touch interceptor for toggling controls */}
-      <Pressable style={[StyleSheet.absoluteFill, { zIndex: 5 }]} onPress={toggleControls} />
+      {/* Touch interceptor for toggling controls (Mobile & TV Mouse pointer) */}
+      <Pressable 
+        style={[StyleSheet.absoluteFill, { zIndex: 5 }]} 
+        onPress={toggleControls} 
+        focusable={false}
+        importantForAccessibility="no"
+      />
 
       {/* Overlay Feedback Text */}
       {overlayText !== '' && (
@@ -746,7 +867,7 @@ export default function PlayerScreen() {
             <View style={styles.settingsSidebar}>
               <Text style={styles.settingsHeader}>Settings</Text>
               {(String(isVod) === 'true' ? ['sources', 'audio', 'subs', 'quality', 'speed'] as const : ['audio', 'subs', 'quality', 'speed'] as const).map((tab, idx) => (
-                <TVTouchable key={tab} hasTVPreferredFocus={idx === 0} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
+                <TVTouchable key={tab} style={[styles.tabBtn, activeTab === tab && styles.activeTabBtn]} onPress={() => setActiveTab(tab)}>
                   <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
                     {tab === 'audio' ? 'Audio' : tab === 'subs' ? 'Subtitles' : tab === 'quality' ? 'Quality' : tab === 'sources' ? 'Sources' : 'Speed'}
                   </Text>
@@ -836,9 +957,11 @@ export default function PlayerScreen() {
               <TVTouchable style={styles.iconButton} onPress={toggleFavorite}>
                 <MaterialIcons name={isFavorite ? "star" : "star-border"} size={28} color={isFavorite ? "#FFD700" : "#fff"} />
               </TVTouchable>
-              <TVTouchable style={styles.iconButton} onPress={togglePiP}>
-                <MaterialIcons name="picture-in-picture-alt" size={28} color="#fff" />
-              </TVTouchable>
+              {!isTV && (
+                <TVTouchable style={styles.iconButton} onPress={togglePiP}>
+                  <MaterialIcons name="picture-in-picture-alt" size={28} color="#fff" />
+                </TVTouchable>
+              )}
               <TVTouchable style={styles.iconButton} onPress={() => { setShowSettings(true); showControlsUI(); }}>
                 <MaterialIcons name="settings" size={28} color="#fff" />
               </TVTouchable>
@@ -847,16 +970,16 @@ export default function PlayerScreen() {
 
           <View style={styles.centerControls} pointerEvents="box-none">
             {!isLive && (
-              <TVTouchable style={styles.centerBtn} onPress={() => { videoRef.current?.seek(Math.max(currentTime - settings.seekDuration, 0)); showControlsUI(); }}>
+              <TVTouchable style={styles.centerBtn} onPress={() => { handleSeek(currentTime - settings.seekDuration, duration); showControlsUI(); }}>
                 <MaterialIcons name="replay-10" size={48} color="#fff" />
                 <Text style={styles.seekBtnText}>-{settings.seekDuration}s</Text>
               </TVTouchable>
             )}
-            <TVTouchable hasTVPreferredFocus={true} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
+            <TVTouchable ref={playBtnRef} style={styles.playBtn} onPress={() => { setPaused(!paused); showControlsUI(); }}>
               <MaterialIcons name={paused ? "play-arrow" : "pause"} size={64} color="#fff" />
             </TVTouchable>
             {!isLive && (
-              <TVTouchable style={styles.centerBtn} onPress={() => { videoRef.current?.seek(currentTime + settings.seekDuration); showControlsUI(); }}>
+              <TVTouchable style={styles.centerBtn} onPress={() => { handleSeek(currentTime + settings.seekDuration, duration); showControlsUI(); }}>
                 <MaterialIcons name="forward-10" size={48} color="#fff" />
                 <Text style={styles.seekBtnText}>+{settings.seekDuration}s</Text>
               </TVTouchable>
@@ -872,12 +995,18 @@ export default function PlayerScreen() {
             ) : (
               <View style={styles.sliderContainer}>
                 <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-                <Slider
-                  style={styles.slider} minimumValue={0} maximumValue={duration} value={currentTime}
-                  minimumTrackTintColor="#E50914" maximumTrackTintColor="rgba(255, 255, 255, 0.3)" thumbTintColor="#E50914"
-                  onSlidingStart={() => clearControlsTimeout()}
-                  onSlidingComplete={(val) => { videoRef.current?.seek(val); showControlsUI(); }}
-                />
+                {!isTV ? (
+                  <Slider
+                    style={styles.slider} minimumValue={0} maximumValue={duration} value={currentTime}
+                    minimumTrackTintColor="#E50914" maximumTrackTintColor="rgba(255, 255, 255, 0.3)" thumbTintColor="#E50914"
+                    onSlidingStart={() => clearControlsTimeout()}
+                    onSlidingComplete={(val) => { handleSeek(val, duration); showControlsUI(); }}
+                  />
+                ) : (
+                  <View style={styles.sliderTvLine}>
+                    <View style={[styles.sliderTvFill, { width: `${(currentTime / (duration || 1)) * 100}%` }]} />
+                  </View>
+                )}
                 <Text style={styles.timeText}>{formatTime(duration)}</Text>
               </View>
             )}
@@ -892,12 +1021,14 @@ export default function PlayerScreen() {
               }}>
                 <MaterialIcons name={activeResizeMode === 'contain' ? 'aspect-ratio' : activeResizeMode === 'cover' ? 'crop-free' : activeResizeMode === 'stretch' ? 'settings-overscan' : 'auto-fix-normal'} size={24} color="#fff" />
               </TVTouchable>
-              <TVTouchable style={styles.smallIconButton} onPress={() => {
-                ScreenOrientation.lockAsync(isLandscape ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE);
-                setIsLandscape(!isLandscape); showControlsUI();
-              }}>
-                <MaterialIcons name={isLandscape ? 'screen-lock-portrait' : 'screen-rotation'} size={24} color="#fff" />
-              </TVTouchable>
+              {!isTV && (
+                <TVTouchable style={styles.smallIconButton} onPress={() => {
+                  ScreenOrientation.lockAsync(isLandscape ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE);
+                  setIsLandscape(!isLandscape); showControlsUI();
+                }}>
+                  <MaterialIcons name={isLandscape ? 'screen-lock-portrait' : 'screen-rotation'} size={24} color="#fff" />
+                </TVTouchable>
+              )}
             </View>
           </LinearGradient>
         </Animated.View>
@@ -933,6 +1064,8 @@ const styles = StyleSheet.create({
   playBtn: { padding: 20, borderRadius: 60, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 2, borderColor: 'transparent' },
   sliderContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, width: '100%' },
   slider: { flex: 1, height: 40, marginHorizontal: 15 },
+  sliderTvLine: { flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 20, borderRadius: 2 },
+  sliderTvFill: { height: '100%', backgroundColor: '#E50914', borderRadius: 2 },
   timeText: { color: '#fff', fontSize: 14, fontWeight: '600', fontVariant: ['tabular-nums'] },
   liveContainer: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginBottom: 10 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E50914', marginRight: 6 },

@@ -3,6 +3,8 @@ import { Platform, View, StyleSheet, useColorScheme, Dimensions } from 'react-na
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BlurView } from 'expo-blur';
 import React from 'react';
+import { isTV } from '../../components/tv';
+import TVSidebar from '../../components/TVSidebar';
 
 const { width } = Dimensions.get('window');
 
@@ -25,14 +27,14 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  return (
+  const tabs = (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#E50914', // Netflix Red
         tabBarInactiveTintColor: isDark ? '#6b6b80' : '#8a8aa3',
         headerShown: false,
         tabBarShowLabel: false, // Hide labels for a cleaner look
-        tabBarStyle: { 
+        tabBarStyle: isTV ? { display: 'none' } : { 
           position: 'absolute',
           bottom: Platform.OS === 'ios' ? 25 : 15,
           left: 20,
@@ -97,6 +99,19 @@ export default function TabLayout() {
       />
     </Tabs>
   );
+
+  if (isTV) {
+    return (
+      <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#0d0d14' }}>
+        <TVSidebar />
+        <View style={{ flex: 1 }}>
+          {tabs}
+        </View>
+      </View>
+    );
+  }
+
+  return tabs;
 }
 
 const styles = StyleSheet.create({

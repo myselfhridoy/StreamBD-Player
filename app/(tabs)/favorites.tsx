@@ -1,5 +1,5 @@
 import Text from '../../components/Text';
-import { TVTouchable } from '../../components/TVTouchable';
+import { TVTouchable, TVFlatList, getTVColumns } from '../../components/tv';
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,7 +11,7 @@ import { Channel } from '../../utils/m3uParser';
 import { usePlaylist } from '../context/PlaylistContext';
 
 const { width } = Dimensions.get('window');
-const numColumns = Math.floor(width / 100);
+const numColumns = getTVColumns();
 
 const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void, onLongPress: (url: string) => void }) => (
   <TVTouchable
@@ -193,10 +193,9 @@ export default function FavoritesScreen() {
       </View>
 
       {/* Content */}
-      <FlatList
+      <TVFlatList
         data={displayedFavorites}
         keyExtractor={(item, index) => item.url + index}
-        numColumns={numColumns}
         renderItem={renderChannel}
         contentContainerStyle={styles.gridContainer}
         columnWrapperStyle={{ justifyContent: 'flex-start' }}

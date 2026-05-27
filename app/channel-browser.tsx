@@ -8,9 +8,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseM3U, Channel } from '../utils/m3uParser';
 import { usePlaylist } from './context/PlaylistContext';
 import * as FileSystem from 'expo-file-system';
+import { TVFlatList, getTVColumns } from '../components/tv';
 
 const { width } = Dimensions.get('window');
-const numColumns = Math.floor(width / 100);
+const numColumns = getTVColumns();
 
 const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress, isFavorite }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void, onLongPress: (item: Channel) => void, isFavorite: boolean }) => (
   <TouchableHighlight 
@@ -257,10 +258,9 @@ export default function ChannelBrowserScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
+        <TVFlatList
           data={filteredChannels}
           keyExtractor={(item, index) => item.url + index}
-          numColumns={numColumns}
           renderItem={renderChannel}
           contentContainerStyle={styles.gridContainer}
           columnWrapperStyle={{ justifyContent: 'flex-start' }}

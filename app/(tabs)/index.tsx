@@ -6,8 +6,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, Animated, BackHandler, Modal, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import SideDrawer from '../../components/SideDrawer';
 import { clearTokenCache } from '../../utils/tokenParser';
+import { useDrawer } from '../context/DrawerContext';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -65,10 +65,11 @@ export default function HomeScreen() {
   const [showUAModal, setShowUAModal] = useState(false);
   const [showDrmModal, setShowDrmModal] = useState(false);
   const [showCustomUAModal, setShowCustomUAModal] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const [customUAInput, setCustomUAInput] = useState('');
   const [customUA, setCustomUA] = useState('');
   
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { openDrawer } = useDrawer();
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -76,10 +77,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        Alert.alert('Exit App', 'Are you sure you want to exit the app?', [
-          { text: 'Cancel', onPress: () => null, style: 'cancel' },
-          { text: 'Exit', onPress: () => { clearTokenCache(); BackHandler.exitApp(); } },
-        ]);
+        setShowExitModal(true);
         return true; 
       };
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -121,11 +119,9 @@ export default function HomeScreen() {
 
   return (
     <LinearGradient colors={['#1a0b2e', '#050505']} style={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
-      <SideDrawer visible={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
-
       {/* Custom Header */}
       <View style={styles.header}>
-        <TVTouchable onPress={() => setIsDrawerOpen(true)} style={styles.iconBtn}>
+        <TVTouchable onPress={openDrawer} style={styles.iconBtn}>
           <MaterialIcons name="menu" size={28} color="#fff" />
         </TVTouchable>
         <Text style={styles.headerTitle}>StreamBD Player</Text>
@@ -282,6 +278,35 @@ export default function HomeScreen() {
                 setShowCustomUAModal(false);
               }}>
                 <Text style={styles.modalOk}>Save</Text>
+              </TVTouchable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Exit Confirmation Modal */}
+      <Modal visible={showExitModal} transparent animationType="fade" onRequestClose={() => setShowExitModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.premiumModalContent, { alignItems: 'center', paddingTop: 30 }]}>
+            <View style={styles.exitIconContainer}>
+              <MaterialIcons name="exit-to-app" size={40} color="#E50914" />
+            </View>
+            <Text style={[styles.premiumModalTitle, { fontSize: 22, textAlign: 'center', marginTop: 15 }]}>Exit App</Text>
+            <Text style={styles.exitModalSubtitle}>Are you sure you want to exit StreamBD Player?</Text>
+            
+            <View style={styles.exitModalActions}>
+              <TVTouchable 
+                hasTVPreferredFocus={true} 
+                style={[styles.exitBtn, styles.exitBtnCancel]} 
+                onPress={() => setShowExitModal(false)}
+              >
+                <Text style={styles.exitBtnCancelText}>Cancel</Text>
+              </TVTouchable>
+              <TVTouchable 
+                style={[styles.exitBtn, styles.exitBtnConfirm]} 
+                onPress={() => { setShowExitModal(false); clearTokenCache(); BackHandler.exitApp(); }}
+              >
+                <Text style={styles.exitBtnConfirmText}>Exit</Text>
               </TVTouchable>
             </View>
           </View>
@@ -469,6 +494,51 @@ const styles = StyleSheet.create({
   },
   modalOk: {
     color: '#A78BFA',
+    fontSize: 16,
+    fontFamily: 'Inter_Bold',
+  },
+  exitIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(229, 9, 20, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exitModalSubtitle: {
+    color: '#8a8aa3',
+    fontSize: 15,
+    fontFamily: 'Inter_Medium',
+    textAlign: 'center',
+    marginBottom: 25,
+    marginTop: -5,
+  },
+  exitModalActions: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  exitBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exitBtnCancel: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  exitBtnConfirm: {
+    backgroundColor: '#E50914',
+  },
+  exitBtnCancelText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_SemiBold',
+  },
+  exitBtnConfirmText: {
+    color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter_Bold',
   },

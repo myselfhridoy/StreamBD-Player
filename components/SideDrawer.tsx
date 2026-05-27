@@ -16,6 +16,7 @@ interface SideDrawerProps {
 const DRAWER_WIDTH = width * 0.75;
 
 export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
+  const [showExitModal, setShowExitModal] = React.useState(false);
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const router = useRouter();
@@ -67,9 +68,13 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
   };
 
   const menuItems = [
+    { icon: 'home', label: 'Home', onPress: () => { onClose(); router.push('/'); } },
+    { icon: 'dashboard', label: 'Categories', onPress: () => { onClose(); router.push('/categories'); } },
+    { icon: 'movie', label: 'Media', onPress: () => { onClose(); router.push('/media'); } },
+    { icon: 'favorite', label: 'Favourites', onPress: () => { onClose(); router.push('/favorites'); } },
     { icon: 'playlist-play', label: 'Playlists', onPress: () => { onClose(); router.push('/playlist'); } },
+    { icon: 'settings', label: 'Settings', onPress: () => { onClose(); router.push('/settings'); } },
     { icon: 'picture-in-picture', label: 'Floating Player', onPress: () => { onClose(); /* Will add PIP logic later */ } },
-    { icon: 'settings', label: 'Video Quality Setting', onPress: () => { onClose(); /* Settings logic later */ } },
     { icon: 'notifications', label: 'Notice', onPress: () => { onClose(); } },
     { icon: 'chat', label: 'Join Us', onPress: () => { onClose(); Linking.openURL('https://t.me/StreamBD'); } },
     { icon: 'copyright', label: 'Copyright', onPress: () => { onClose(); } },
@@ -77,11 +82,7 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
     { icon: 'email', label: 'Email', onPress: () => { onClose(); handleEmail(); } },
     { icon: 'system-update', label: 'Update App', onPress: () => { onClose(); } },
     { icon: 'exit-to-app', label: 'Exit', onPress: () => { 
-        onClose(); 
-        Alert.alert('Exit App', 'Are you sure you want to exit the app?', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Exit', onPress: () => { clearTokenCache(); BackHandler.exitApp(); } },
-        ]);
+        setShowExitModal(true);
     } },
   ];
 
@@ -109,6 +110,35 @@ export default function SideDrawer({ visible, onClose }: SideDrawerProps) {
           </ScrollView>
         </Animated.View>
       </View>
+
+      {/* Exit Confirmation Modal */}
+      <Modal visible={showExitModal} transparent animationType="fade" onRequestClose={() => setShowExitModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.premiumModalContent, { alignItems: 'center', paddingTop: 30 }]}>
+            <View style={styles.exitIconContainer}>
+              <MaterialIcons name="exit-to-app" size={40} color="#E50914" />
+            </View>
+            <Text style={[styles.premiumModalTitle, { fontSize: 22, textAlign: 'center', marginTop: 15 }]}>Exit App</Text>
+            <Text style={styles.exitModalSubtitle}>Are you sure you want to exit StreamBD Player?</Text>
+            
+            <View style={styles.exitModalActions}>
+              <TVTouchable 
+                hasTVPreferredFocus={true} 
+                style={[styles.exitBtn, styles.exitBtnCancel]} 
+                onPress={() => setShowExitModal(false)}
+              >
+                <Text style={styles.exitBtnCancelText}>Cancel</Text>
+              </TVTouchable>
+              <TVTouchable 
+                style={[styles.exitBtn, styles.exitBtnConfirm]} 
+                onPress={() => { setShowExitModal(false); onClose(); clearTokenCache(); BackHandler.exitApp(); }}
+              >
+                <Text style={styles.exitBtnConfirmText}>Exit</Text>
+              </TVTouchable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -175,5 +205,76 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter_SemiBold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  premiumModalContent: {
+    backgroundColor: '#161622',
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    elevation: 10,
+  },
+  premiumModalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'Inter_Bold',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  exitIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(229, 9, 20, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exitModalSubtitle: {
+    color: '#8a8aa3',
+    fontSize: 15,
+    fontFamily: 'Inter_Medium',
+    textAlign: 'center',
+    marginBottom: 25,
+    marginTop: -5,
+  },
+  exitModalActions: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  exitBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  exitBtnCancel: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  exitBtnConfirm: {
+    backgroundColor: '#E50914',
+  },
+  exitBtnCancelText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_SemiBold',
+  },
+  exitBtnConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_Bold',
   },
 });
