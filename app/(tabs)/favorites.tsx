@@ -187,6 +187,7 @@ export default function FavoritesScreen() {
         {['LIVE EVENTS', 'CHANNELS', 'VOD'].map((tab) => (
           <TVTouchable
             key={tab}
+            hasTVPreferredFocus={tab === 'LIVE EVENTS'}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab as any)}
           >

@@ -129,6 +129,7 @@ export default function CategoriesScreen() {
         
         <TVTouchable 
           style={styles.headerIconBtn} 
+          hasTVPreferredFocus={true}
           onPress={() => {
             if (isSearchActive) setSearchQuery('');
             setIsSearchActive(!isSearchActive);

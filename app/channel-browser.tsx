@@ -1,6 +1,6 @@
 import Text from '../components/Text';
 import React, { useState, useEffect, memo, useCallback } from 'react';
-import { StyleSheet, View, TouchableOpacity, FlatList, ActivityIndicator, Image, Modal, TextInput, Dimensions, TouchableHighlight } from 'react-native';
+import { StyleSheet, View, FlatList, ActivityIndicator, Image, Modal, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -8,13 +8,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseM3U, Channel } from '../utils/m3uParser';
 import { usePlaylist } from './context/PlaylistContext';
 import * as FileSystem from 'expo-file-system';
-import { TVFlatList, getTVColumns } from '../components/tv';
+import { TVFlatList, getTVColumns, TVTouchable } from '../components/tv';
 
 const { width } = Dimensions.get('window');
 const numColumns = getTVColumns();
 
 const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress, isFavorite }: { item: Channel, index: number, onPress: (item: Channel, index: number) => void, onLongPress: (item: Channel) => void, isFavorite: boolean }) => (
-  <TouchableHighlight 
+  <TVTouchable 
     style={[styles.channelItem, isFavorite && styles.favoriteItem]} 
     onPress={() => onPress(item, index)}
     onLongPress={() => onLongPress(item)}
@@ -37,7 +37,7 @@ const MemoizedChannelItem = memo(({ item, index, onPress, onLongPress, isFavorit
         {item.name}
       </Text>
     </View>
-  </TouchableHighlight>
+  </TVTouchable>
 ));
 
 export default function ChannelBrowserScreen() {
@@ -188,9 +188,9 @@ export default function ChannelBrowserScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <TVTouchable onPress={() => router.back()} style={styles.iconBtn} hasTVPreferredFocus={true}>
             <MaterialIcons name="arrow-back" size={28} color="#fff" />
-          </TouchableOpacity>
+          </TVTouchable>
           {!isSearchActive ? (
             <Text style={styles.headerTitle} numberOfLines={1}>{playlistName || 'Playlist'}</Text>
           ) : (
@@ -205,38 +205,38 @@ export default function ChannelBrowserScreen() {
           )}
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => {
+          <TVTouchable onPress={() => {
             if (isSearchActive) setSearchQuery('');
             setIsSearchActive(!isSearchActive);
           }} style={styles.iconBtn}>
             <MaterialIcons name={isSearchActive ? "close" : "search"} size={26} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/favorites')} style={styles.iconBtn}>
+          </TVTouchable>
+          <TVTouchable onPress={() => router.push('/favorites')} style={styles.iconBtn}>
             <MaterialIcons name="star" size={26} color="#fff" />
-          </TouchableOpacity>
+          </TVTouchable>
         </View>
       </View>
 
       {/* Categories Bar */}
       {!loading && !error && (
         <View style={styles.categoryBarContainer}>
-          <TouchableOpacity style={styles.choseBtn} onPress={() => setShowCategoryModal(true)}>
+          <TVTouchable style={styles.choseBtn} onPress={() => setShowCategoryModal(true)}>
             <MaterialIcons name="list" size={20} color="#fff" style={{ marginRight: 5 }} />
             <Text style={styles.choseBtnText}>Chose</Text>
-          </TouchableOpacity>
+          </TVTouchable>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             data={categories}
             keyExtractor={item => item}
             renderItem={({ item }) => (
-              <TouchableOpacity
+              <TVTouchable
                 style={[styles.categoryChip, selectedCategory === item && styles.categoryChipActive]}
                 onPress={() => setSelectedCategory(item)}
               >
                 {selectedCategory === item && <MaterialIcons name="check" size={16} color="#fff" style={{ marginRight: 4 }} />}
                 <Text style={styles.categoryChipText}>{item}</Text>
-              </TouchableOpacity>
+              </TVTouchable>
             )}
             contentContainerStyle={{ paddingRight: 15 }}
           />
@@ -253,9 +253,9 @@ export default function ChannelBrowserScreen() {
         <View style={styles.centerContent}>
           <MaterialIcons name="error-outline" size={48} color="#E50914" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={loadPlaylist}>
+          <TVTouchable style={styles.retryBtn} onPress={loadPlaylist}>
             <Text style={styles.retryBtnText}>Retry</Text>
-          </TouchableOpacity>
+          </TVTouchable>
         </View>
       ) : (
         <TVFlatList
@@ -286,9 +286,9 @@ export default function ChannelBrowserScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.categoryModal, { marginTop: Math.max(insets.top, 15) + 60 }]}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowCategoryModal(false)} style={styles.iconBtn}>
+              <TVTouchable onPress={() => setShowCategoryModal(false)} style={styles.iconBtn}>
                 <MaterialIcons name="close" size={24} color="#fff" />
-              </TouchableOpacity>
+              </TVTouchable>
               {!isCategorySearchActive ? (
                 <Text style={styles.modalTitle}>Chose Category</Text>
               ) : (
@@ -301,18 +301,18 @@ export default function ChannelBrowserScreen() {
                   autoFocus
                 />
               )}
-              <TouchableOpacity onPress={() => {
+              <TVTouchable onPress={() => {
                 if (isCategorySearchActive) setCategorySearchQuery('');
                 setIsCategorySearchActive(!isCategorySearchActive);
               }} style={styles.iconBtn}>
                 <MaterialIcons name={isCategorySearchActive ? "close" : "search"} size={24} color="#fff" />
-              </TouchableOpacity>
+              </TVTouchable>
             </View>
             <FlatList
               data={categories.filter(c => c.toLowerCase().includes(categorySearchQuery.toLowerCase()))}
               keyExtractor={item => item}
               renderItem={({ item }) => (
-                <TouchableOpacity
+                <TVTouchable
                   style={styles.modalCategoryItem}
                   onPress={() => {
                     setSelectedCategory(item);
@@ -321,7 +321,7 @@ export default function ChannelBrowserScreen() {
                 >
                   <MaterialIcons name="playlist-play" size={24} color="#fff" />
                   <Text style={styles.modalCategoryText}>{item}</Text>
-                </TouchableOpacity>
+                </TVTouchable>
               )}
             />
           </View>

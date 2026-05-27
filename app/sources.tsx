@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, Pressable, Dimensions } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '../components/Text';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -7,6 +7,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Colors from '@/constants/Colors';
 import { AddonManager, StreamSource } from '../utils/addonManager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TVTouchable } from '../components/tv';
 
 const { width } = Dimensions.get('window');
 
@@ -69,12 +70,15 @@ export default function SourcesScreen() {
   };
 
   const renderSource = ({ item, index }: { item: StreamSource; index: number }) => (
-    <Pressable
-      style={({ pressed }) => [
-        styles.sourceCard,
-        pressed && { backgroundColor: '#2A2A3A' },
-      ]}
+    <TVTouchable
+      style={styles.sourceCard}
       onPress={() => playSource(index)}
+      focusedStyle={{
+        backgroundColor: '#2A2A3A',
+        borderColor: '#E50914',
+        borderWidth: 2,
+        transform: [{ scale: 1.02 }],
+      }}
     >
       <View style={styles.sourceLeft}>
         <View style={styles.qualityBadge}>
@@ -89,7 +93,7 @@ export default function SourcesScreen() {
         </View>
       </View>
       <MaterialIcons name="play-circle-outline" size={32} color={Colors.light.tint} />
-    </Pressable>
+    </TVTouchable>
   );
 
   return (
@@ -98,9 +102,9 @@ export default function SourcesScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <TVTouchable onPress={() => router.back()} style={styles.backBtn} hasTVPreferredFocus={true}>
           <MaterialIcons name="arrow-back" size={26} color="#FFF" />
-        </Pressable>
+        </TVTouchable>
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {(title as string) || 'Select Source'}
@@ -110,9 +114,9 @@ export default function SourcesScreen() {
           </Text>
         </View>
         {!loading && (
-          <Pressable onPress={fetchSources} style={styles.refreshBtn}>
+          <TVTouchable onPress={fetchSources} style={styles.refreshBtn}>
             <MaterialIcons name="refresh" size={24} color="#FFF" />
-          </Pressable>
+          </TVTouchable>
         )}
       </View>
 
@@ -126,10 +130,10 @@ export default function SourcesScreen() {
         <View style={styles.centered}>
           <MaterialIcons name="error-outline" size={64} color="#E50914" />
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryBtn} onPress={fetchSources}>
+          <TVTouchable style={styles.retryBtn} onPress={fetchSources}>
             <MaterialIcons name="refresh" size={20} color="#FFF" />
             <Text style={styles.retryText}>Retry</Text>
-          </Pressable>
+          </TVTouchable>
         </View>
       ) : (
         <FlatList

@@ -200,6 +200,7 @@ export default function MediaScreen() {
 
           <View style={styles.heroButtons}>
             <TVTouchable
+              hasTVPreferredFocus={true}
               onPress={() => handlePress(heroItem)}
               style={({ pressed }: any) => [
                 styles.playButton,

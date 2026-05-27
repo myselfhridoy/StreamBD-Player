@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
 import {
   Pressable,
   PressableProps,
@@ -39,10 +39,29 @@ export const TVTouchable = forwardRef<any, TVTouchableProps>(
     ref
   ) => {
     const PressableComponent = Pressable as any;
+    const [isFocusedWeb, setIsFocusedWeb] = useState(false);
+    
+    // Create an internal ref to handle auto-focus
+    const internalRef = useRef<any>(null);
+    
+    // Merge external ref with internal ref
+    useImperativeHandle(ref, () => internalRef.current, []);
+
+    // Polyfill for generic TV boxes: force focus on mount if requested
+    useEffect(() => {
+      if (hasTVPreferredFocus) {
+        const timer = setTimeout(() => {
+          internalRef.current?.focus?.();
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }, [hasTVPreferredFocus]);
 
     return (
       <PressableComponent
-        ref={ref}
+        // @ts-ignore
+        tabIndex={0}
+        ref={internalRef}
         focusable={true}
         accessible={true}
         // isTVSelectable only on real TV/TV Box
@@ -54,13 +73,24 @@ export const TVTouchable = forwardRef<any, TVTouchableProps>(
         nextFocusLeft={nextFocusLeft}
         nextFocusRight={nextFocusRight}
         {...props}
+        onFocus={(e: any) => {
+          setIsFocusedWeb(true);
+          if (props.onFocus) props.onFocus(e);
+        }}
+        onBlur={(e: any) => {
+          setIsFocusedWeb(false);
+          if (props.onBlur) props.onBlur(e);
+        }}
         style={(state: any) => {
           const baseStyle =
             typeof style === 'function' ? style(state) : style;
 
-          const focused = state.focused && isTV;
+          // state.focused works on Android TV, isFocusedWeb works on Web browser via Tab key
+          const focused = (state.focused || isFocusedWeb) && isTV;
 
           return [
+            // Prevent ugly default browser blue outline on Web
+            { outlineStyle: 'none' },
             baseStyle,
             focused &&
             (focusedStyle ?? {
