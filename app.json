@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.myselfhridoy.streambdplayer",
+      "jsEngine": "jsc",
       "adaptiveIcon": {
         "backgroundColor": "#0d0d14",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
