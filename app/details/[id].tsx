@@ -151,20 +151,20 @@ export default function DetailsScreen() {
             style={styles.heroGradient}
           />
           
-          <Pressable 
+          <TVTouchable 
             style={[styles.backButton, { top: Math.max(insets.top + 10, 30) }]}
             onPress={() => router.back()}
           >
             <MaterialIcons name="arrow-back" size={28} color="#FFF" />
-          </Pressable>
+          </TVTouchable>
 
           {/* Favorite button */}
-          <Pressable 
+          <TVTouchable 
             style={[styles.favButton, { top: Math.max(insets.top + 10, 30) }]}
             onPress={toggleFavorite}
           >
             <MaterialIcons name={isFavorite ? "favorite" : "favorite-border"} size={26} color={isFavorite ? "#E50914" : "#FFF"} />
-          </Pressable>
+          </TVTouchable>
         </View>
 
         {/* Content */}
@@ -190,16 +190,14 @@ export default function DetailsScreen() {
 
           {/* Play Button (Movie only) */}
           {!isTv && (
-            <Pressable
+            <TVTouchable
+              hasTVPreferredFocus={true}
               onPress={() => handlePlay()}
-              style={({ pressed }) => [
-                styles.playButton,
-                { opacity: pressed ? 0.7 : 1 }
-              ]}
+              style={styles.playButton}
             >
               <MaterialIcons name="play-arrow" size={28} color="#000" />
               <Text style={styles.playButtonText}>Play</Text>
-            </Pressable>
+            </TVTouchable>
           )}
 
           <Text style={styles.overview}>{data.overview}</Text>
@@ -240,6 +238,7 @@ export default function DetailsScreen() {
                 {seasons.map((s: any) => (
                   <TVTouchable
                     key={s.season_number}
+                    hasTVPreferredFocus={selectedSeason === s.season_number}
                     style={[styles.seasonChip, selectedSeason === s.season_number && styles.seasonChipActive]}
                     onPress={() => fetchEpisodes(s.season_number)}
                   >

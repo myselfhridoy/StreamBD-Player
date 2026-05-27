@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View, findNodeHandle, AccessibilityInfo } from 'react-native';
+import { ActivityIndicator, Animated, AppState, Dimensions, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View, findNodeHandle, AccessibilityInfo, TVEventHandler } from 'react-native';
 import Video, { DRMType, OnLoadData, ReactVideoSource, SelectedTrackType, SelectedVideoTrackType, VideoRef } from 'react-native-video';
 import { VolumeManager } from 'react-native-volume-manager';
 import Text from '../components/Text';
@@ -298,6 +298,28 @@ export default function PlayerScreen() {
       controlsTimeoutRef.current = setTimeout(() => hideControls(), isTV ? 8000 : 4000);
     }
   };
+
+  const showControlsRef = useRef(showControls);
+  useEffect(() => {
+    showControlsRef.current = showControls;
+  }, [showControls]);
+
+  useEffect(() => {
+    let tvHandler: any = null;
+    if (isTV) {
+      tvHandler = new TVEventHandler();
+      tvHandler.enable(null, (cmp: any, evt: any) => {
+        if (evt && evt.eventType === 'select') {
+          if (!showControlsRef.current) {
+            showControlsUI();
+          }
+        }
+      });
+    }
+    return () => {
+      if (tvHandler) tvHandler.disable();
+    };
+  }, []);
 
   const playBtnRef = useRef<any>(null);
 

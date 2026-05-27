@@ -94,10 +94,13 @@ export const TVTouchable = forwardRef<any, TVTouchableProps>(
             baseStyle,
             focused &&
             (focusedStyle ?? {
-              borderWidth: 2,
-              borderColor: '#E50914',
               transform: [{ scale: 1.05 }],
-              backgroundColor: 'rgba(229, 9, 20, 0.1)',
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 6,
+              elevation: 8,
             }),
             state.pressed && { opacity: activeOpacity },
           ];

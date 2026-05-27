@@ -5,7 +5,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { Animated, BackHandler, Modal, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isTV } from '../../components/tv';
@@ -71,6 +71,21 @@ export default function HomeScreen() {
   const [customUA, setCustomUA] = useState('');
 
   const { openDrawer } = useDrawer();
+
+  const uaBtnRef = useRef<any>(null);
+  const drmBtnRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!showUAModal && !showCustomUAModal && uaBtnRef.current) {
+      setTimeout(() => uaBtnRef.current?.focus?.(), 100);
+    }
+  }, [showUAModal, showCustomUAModal]);
+
+  useEffect(() => {
+    if (!showDrmModal && drmBtnRef.current) {
+      setTimeout(() => drmBtnRef.current?.focus?.(), 100);
+    }
+  }, [showDrmModal]);
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -153,7 +168,7 @@ export default function HomeScreen() {
                 <View style={styles.floatingLabelWrapper}>
                   <Text style={styles.floatingLabel}>UserAgent</Text>
                 </View>
-                <TVTouchable onPress={() => setShowUAModal(true)}>
+                <TVTouchable ref={uaBtnRef} onPress={() => setShowUAModal(true)}>
                   <View style={[styles.outlinedInput, { justifyContent: 'center' }]}>
                     <Text style={styles.dropdownValueText} numberOfLines={1}>
                       {uaOptions.find(o => o.value === userAgent)?.label || 'Default'}
@@ -169,7 +184,7 @@ export default function HomeScreen() {
                 <View style={styles.floatingLabelWrapper}>
                   <Text style={styles.floatingLabel}>DrmScheme</Text>
                 </View>
-                <TVTouchable onPress={() => setShowDrmModal(true)}>
+                <TVTouchable ref={drmBtnRef} onPress={() => setShowDrmModal(true)}>
                   <View style={[styles.outlinedInput, { justifyContent: 'center' }]}>
                     <Text style={styles.dropdownValueText} numberOfLines={1}>
                       {drmOptions.find(o => o.value === drmScheme)?.label || 'ClearKey'}

@@ -4,7 +4,7 @@ import { TVTouchable, TVFlatList, getTVColumns } from '../../components/tv';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useState, useRef, useEffect } from 'react';
 import { Dimensions, FlatList, Image, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Channel } from '../../utils/m3uParser';
@@ -53,6 +53,17 @@ export default function FavoritesScreen() {
   const [activeTab, setActiveTab] = useState<'LIVE EVENTS' | 'CHANNELS' | 'VOD'>('CHANNELS');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
+
+  const searchInputRef = useRef<TextInput>(null);
+  const searchBtnRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (isSearchActive) {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    } else {
+      setTimeout(() => searchBtnRef.current?.focus?.(), 100);
+    }
+  }, [isSearchActive]);
 
   useFocusEffect(
     useCallback(() => {
@@ -161,6 +172,7 @@ export default function FavoritesScreen() {
         ) : (
           <View style={styles.searchContainer}>
             <TextInput
+              ref={searchInputRef}
               style={styles.searchInput}
               placeholder="Search favorites..."
               placeholderTextColor="#888"
@@ -171,7 +183,7 @@ export default function FavoritesScreen() {
           </View>
         )}
 
-        <TVTouchable onPress={() => {
+        <TVTouchable ref={searchBtnRef} onPress={() => {
           if (isSearchActive) setSearchQuery('');
           setIsSearchActive(!isSearchActive);
         }} style={styles.iconBtn}>
